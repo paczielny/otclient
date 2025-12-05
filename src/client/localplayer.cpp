@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,60 +21,101 @@
  */
 
 #include "localplayer.h"
+
+#include "container.h"
 #include "game.h"
+#include "item.h"
 #include "map.h"
 #include "tile.h"
-#include <framework/core/eventdispatcher.h>
+#include "framework/core/clock.h"
+#include "framework/core/eventdispatcher.h"
 
 void LocalPlayer::lockWalk(const uint16_t millis)
 {
     m_walkLockExpiration = std::max<ticks_t>(m_walkLockExpiration, g_clock.millis() + millis);
 }
 
-bool LocalPlayer::canWalk(const Otc::Direction dir, const bool ignoreLock)
+bool LocalPlayer::canWalk(const bool ignoreLock)
 {
-    // paralyzed
+    // Prevent movement if the player is dead
     if (isDead())
         return false;
 
-    // cannot walk while locked
+    // Prevent movement if walking is locked, unless ignored
     if (isWalkLocked() && !ignoreLock)
         return false;
 
+    // Ensure movement synchronization with the server
+    if (g_game.getWalkMaxSteps() > 0) {
+        if (m_preWalks.size() > g_game.getWalkMaxSteps())
+            return false;
+    } else if (getPosition() != getServerPosition())
+        return false;
+
+    // Handle ongoing movement cases
     if (isWalking()) {
-        if (isAutoWalking()) return true; // always allow automated walks
-        if (isPreWalking()) return false; // allow only single prewalk
+        if (isAutoWalking()) return true;  // Allow auto-walking
+        if (isPreWalking()) return false;  // Prevent pre-walk interruptions
     }
 
-    return m_walkTimer.ticksElapsed() >= getStepDuration(); // allow only if walk done, ex. diagonals may need additional ticks before taking another step
+    // allow only if walk done, ex. diagonals may need additional ticks before taking another step
+    return m_walkTimer.ticksElapsed() >= getStepDuration();
 }
 
 void LocalPlayer::walk(const Position& oldPos, const Position& newPos)
 {
     m_autoWalkRetries = 0;
 
-    if (isPreWalking()) {
-        if (newPos == m_lastPrewalkDestination) {
-            updateWalk();
-        }
-        m_lastPrewalkDestination = {};
+    if (isPreWalking() && newPos == m_preWalks.front()) {
+        m_preWalks.pop_front();
         return;
     }
 
+    cancelAdjustInvalidPosEvent();
+    m_preWalks.clear();
     m_serverWalk = true;
+
     Creature::walk(oldPos, newPos);
 }
 
-void LocalPlayer::preWalk(const Otc::Direction direction)
+void LocalPlayer::preWalk(Otc::Direction direction)
 {
-    auto pos = m_position.translatedToDirection(direction);
-    // avoid reanimating prewalks
-    if (m_lastPrewalkDestination.isValid() || m_lastPrewalkDestination == pos)
-        return;
+    m_lastMapDuration = -1;
 
-    // start walking to direction
-    m_lastPrewalkDestination = pos;
-    Creature::walk(m_position, m_lastPrewalkDestination);
+    const auto& oldPos = getPosition();
+    Creature::walk(oldPos, m_preWalks.emplace_back(oldPos.translatedToDirection(direction)));
+    Creature::onPositionChange(getLastStepToPosition(), getLastStepFromPosition());
+    registerAdjustInvalidPosEvent();
+}
+
+void LocalPlayer::onWalking() {
+    if (isPreWalking()) {
+        if (const auto& tile = g_map.getTile(getPosition())) {
+            for (const auto& creature : tile->getWalkingCreatures()) {
+                // Cancel pre-walk movement if the local player tries to walk on an unwalkable tile.
+                if (creature.get() != this && creature->getPosition() == getPosition()) {
+                    cancelWalk();
+                    g_map.notificateTileUpdate(getPosition(), asLocalPlayer(), Otc::OPERATION_CLEAN);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void LocalPlayer::registerAdjustInvalidPosEvent() {
+    cancelAdjustInvalidPosEvent();
+    m_adjustInvalidPosEvent = g_dispatcher.scheduleEvent([this, self = asLocalPlayer()] {
+        m_preWalks.clear();
+        g_game.resetMapUpdatedAt();
+        m_adjustInvalidPosEvent = nullptr;
+    }, std::min<int>(std::max<int>(getStepDuration(), g_game.getPing()) + 100, 1000));
+}
+
+void LocalPlayer::cancelAdjustInvalidPosEvent() {
+    if (!m_adjustInvalidPosEvent) return;
+    m_adjustInvalidPosEvent->cancel();
+    m_adjustInvalidPosEvent = nullptr;
 }
 
 bool LocalPlayer::retryAutoWalk()
@@ -110,6 +151,10 @@ void LocalPlayer::cancelWalk(const Otc::Direction direction)
 
     g_map.notificateCameraMove(m_walkOffset);
 
+    if (m_adjustInvalidPosEvent) {
+        m_adjustInvalidPosEvent->execute();
+    }
+
     lockWalk();
     if (retryAutoWalk()) return;
 
@@ -136,8 +181,8 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry)
         return true;
 
     m_autoWalkDestination = destination;
-    auto self(asLocalPlayer());
-    g_map.findPathAsync(m_position, destination, [self](const auto& result) {
+
+    g_map.findPathAsync(m_position, destination, [self = asLocalPlayer()](const auto& result) {
         if (self->m_autoWalkDestination != result->destination)
             return;
 
@@ -173,6 +218,8 @@ bool LocalPlayer::autoWalk(const Position& destination, const bool retry)
     return true;
 }
 
+bool LocalPlayer::isWalkLocked() { return m_walkLockExpiration != 0 && g_clock.millis() < m_walkLockExpiration; }
+
 void LocalPlayer::stopAutoWalk()
 {
     m_autoWalkDestination = {};
@@ -183,36 +230,18 @@ void LocalPlayer::stopAutoWalk()
         m_autoWalkContinueEvent->cancel();
 }
 
-void LocalPlayer::updateWalkOffset(const uint8_t totalPixelsWalked)
-{
-    if (!isPreWalking()) {
-        Creature::updateWalkOffset(totalPixelsWalked);
-        return;
-    }
-
-    // pre walks offsets are calculated in the oposite direction
-    m_walkOffset = {};
-    if (m_direction == Otc::North || m_direction == Otc::NorthEast || m_direction == Otc::NorthWest)
-        m_walkOffset.y = -totalPixelsWalked;
-    else if (m_direction == Otc::South || m_direction == Otc::SouthEast || m_direction == Otc::SouthWest)
-        m_walkOffset.y = totalPixelsWalked;
-
-    if (m_direction == Otc::East || m_direction == Otc::NorthEast || m_direction == Otc::SouthEast)
-        m_walkOffset.x = totalPixelsWalked;
-    else if (m_direction == Otc::West || m_direction == Otc::NorthWest || m_direction == Otc::SouthWest)
-        m_walkOffset.x = -totalPixelsWalked;
-}
-
 void LocalPlayer::terminateWalk()
 {
     Creature::terminateWalk();
     m_serverWalk = false;
-    m_lastPrewalkDestination = {};
     callLuaField("onWalkFinish");
 }
 
 void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPos)
 {
+    if (isPreWalking())
+        return;
+
     Creature::onPositionChange(newPos, oldPos);
 
     if (newPos == m_autoWalkDestination)
@@ -220,17 +249,15 @@ void LocalPlayer::onPositionChange(const Position& newPos, const Position& oldPo
     else if (m_autoWalkDestination.isValid() && newPos == m_lastAutoWalkPosition)
         autoWalk(m_autoWalkDestination);
 
-    if (isServerWalking()) {
-        m_serverWalk = false;
-    }
+    m_serverWalk = false;
 }
 
-void LocalPlayer::setStates(const uint32_t states)
+void LocalPlayer::setStates(const uint64_t states)
 {
     if (m_states == states)
         return;
 
-    const uint32_t oldStates = m_states;
+    const uint64_t oldStates = m_states;
     m_states = states;
 
     if (isParalyzed())
@@ -354,6 +381,19 @@ void LocalPlayer::setMana(const uint32_t mana, const uint32_t maxMana)
     callLuaField("onManaChange", mana, maxMana, oldMana, oldMaxMana);
 }
 
+void LocalPlayer::setManaShield(const uint32_t manaShield, const uint32_t maxManaShield)
+{
+    if (m_manaShield == manaShield && m_maxManaShield == maxManaShield)
+        return;
+
+    const uint32_t oldManaShield = m_manaShield;
+    const uint32_t oldMaxManaShield = m_maxManaShield;
+    m_manaShield = manaShield;
+    m_maxManaShield = maxManaShield;
+
+    callLuaField("onManaShieldChange", manaShield, maxManaShield, oldManaShield, oldMaxManaShield);
+}
+
 void LocalPlayer::setMagicLevel(const uint16_t magicLevel, const uint16_t magicLevelPercent)
 {
     if (m_magicLevel == magicLevel && m_magicLevelPercent == magicLevelPercent)
@@ -417,15 +457,67 @@ void LocalPlayer::setInventoryItem(const Otc::InventorySlot inventory, const Ite
     callLuaField("onInventoryChange", inventory, item, oldItem);
 }
 
-void LocalPlayer::setVocation(const uint8_t vocation)
+void LocalPlayer::setInventoryCountCache(std::map<std::pair<uint16_t, uint8_t>, uint32_t> counts)
 {
-    if (m_vocation == vocation)
-        return;
+    m_inventoryCountCache = std::move(counts);
+}
 
-    const uint8_t oldVocation = m_vocation;
-    m_vocation = vocation;
+bool LocalPlayer::hasEquippedItemId(const uint16_t itemId, const uint8_t tier)
+{
+    if (itemId == 0)
+        return false;
 
-    callLuaField("onVocationChange", vocation, oldVocation);
+    for (const auto& item : m_inventoryItems) {
+        if (!item)
+            continue;
+
+        if (item->getId() != itemId)
+            continue;
+
+        if (item->getTier() != tier)
+            continue;
+
+        return true;
+    }
+
+    return false;
+}
+
+uint32_t LocalPlayer::getInventoryCount(const uint16_t itemId, const uint8_t tier)
+{
+    if (std::cmp_equal(itemId, 0))
+        return 0;
+
+    const auto key = std::make_pair(itemId, tier);
+    const auto it = m_inventoryCountCache.find(key);
+    if (it != m_inventoryCountCache.end()) {
+        return it->second;
+    }
+
+    uint32_t total = 0;
+
+    const auto accumulate = [&](const ItemPtr& item) {
+        if (item && std::cmp_equal(item->getId(), itemId) && item->getTier() == tier) {
+            total += item->getCount();
+        }
+    };
+
+    for (const auto& item : m_inventoryItems)
+        accumulate(item);
+
+    for (const auto& [containerId, container] : g_game.getContainers()) {
+        if (!container)
+            continue;
+
+        for (const auto& item : container->getItems())
+            accumulate(item);
+    }
+
+    constexpr uint64_t maxUint32 = 4294967295;
+    if (total > maxUint32) {
+        total = maxUint32;        
+    }
+    return static_cast<uint32_t>(total);
 }
 
 void LocalPlayer::setPremium(const bool premium)
@@ -500,4 +592,129 @@ void LocalPlayer::setResourceBalance(const Otc::ResourceTypes_t type, const uint
 bool LocalPlayer::hasSight(const Position& pos)
 {
     return m_position.isInRange(pos, g_map.getAwareRange().left - 1, g_map.getAwareRange().top - 1);
+}
+
+void LocalPlayer::setFlatDamageHealing(uint16_t flatBonus)
+{
+    if (m_flatDamageHealing == flatBonus)
+        return;
+
+    const uint16_t oldFlatBonus = m_flatDamageHealing;
+    m_flatDamageHealing = flatBonus;
+
+    callLuaField("onFlatDamageHealingChange", flatBonus);
+}
+
+void LocalPlayer::setAttackInfo(uint16_t attackValue, uint8_t attackElement)
+{
+    if (m_attackValue == attackValue && m_attackElement == attackElement)
+        return;
+
+    const uint16_t oldAttackValue = m_attackValue;
+    const uint8_t oldAttackElement = m_attackElement;
+    m_attackValue = attackValue;
+    m_attackElement = attackElement;
+
+    callLuaField("onAttackInfoChange", attackValue, attackElement);
+}
+
+void LocalPlayer::setConvertedDamage(double convertedDamage, uint8_t convertedElement)
+{
+    if (m_convertedDamage == convertedDamage && m_convertedElement == convertedElement)
+        return;
+
+    const double oldConvertedDamage = m_convertedDamage;
+    const uint8_t oldConvertedElement = m_convertedElement;
+    m_convertedDamage = convertedDamage;
+    m_convertedElement = convertedElement;
+
+    callLuaField("onConvertedDamageChange", convertedDamage, convertedElement);
+}
+
+void LocalPlayer::setImbuements(double lifeLeech, double manaLeech, double critChance, double critDamage, double onslaught)
+{
+    if (m_lifeLeech == lifeLeech && m_manaLeech == manaLeech && m_critChance == critChance &&
+        m_critDamage == critDamage && m_onslaught == onslaught)
+        return;
+
+    const double oldLifeLeech = m_lifeLeech;
+    const double oldManaLeech = m_manaLeech;
+    const double oldCritChance = m_critChance;
+    const double oldCritDamage = m_critDamage;
+    const double oldOnslaught = m_onslaught;
+
+    m_lifeLeech = lifeLeech;
+    m_manaLeech = manaLeech;
+    m_critChance = critChance;
+    m_critDamage = critDamage;
+    m_onslaught = onslaught;
+
+    callLuaField("onImbuementsChange", lifeLeech, manaLeech, critChance, critDamage, onslaught);
+}
+
+void LocalPlayer::setDefenseInfo(uint16_t defense, uint16_t armor, double mitigation, double dodge, uint16_t damageReflection)
+{
+    if (m_defense == defense && m_armor == armor && m_mitigation == mitigation &&
+        m_dodge == dodge && m_damageReflection == damageReflection)
+        return;
+
+    const uint16_t oldDefense = m_defense;
+    const uint16_t oldArmor = m_armor;
+    const double oldMitigation = m_mitigation;
+    const double oldDodge = m_dodge;
+    const uint16_t oldDamageReflection = m_damageReflection;
+
+    m_defense = defense;
+    m_armor = armor;
+    m_mitigation = mitigation;
+    m_dodge = dodge;
+    m_damageReflection = damageReflection;
+
+    callLuaField("onDefenseInfoChange", defense, armor, mitigation, dodge, damageReflection);
+}
+
+void LocalPlayer::setCombatAbsorbValues(const std::map<uint8_t, double>& absorbValues)
+{
+    if (m_combatAbsorbValues == absorbValues)
+        return;
+
+    const auto oldAbsorbValues = m_combatAbsorbValues;
+    m_combatAbsorbValues = absorbValues;
+
+    callLuaField("onCombatAbsorbValuesChange", absorbValues);
+}
+
+void LocalPlayer::setForgeBonuses(double momentum, double transcendence, double amplification)
+{
+    if (m_momentum == momentum && m_transcendence == transcendence && m_amplification == amplification)
+        return;
+
+    const double oldMomentum = m_momentum;
+    const double oldTranscendence = m_transcendence;
+    const double oldAmplification = m_amplification;
+
+    m_momentum = momentum;
+    m_transcendence = transcendence;
+    m_amplification = amplification;
+
+    callLuaField("onForgeBonusesChange", momentum, transcendence, amplification);
+}
+
+void LocalPlayer::setExperienceRate(Otc::ExperienceRate_t type, uint16_t value)
+{
+    if (m_experienceRates[type] == value)
+        return;
+
+    const uint16_t oldValue = m_experienceRates[type];
+    m_experienceRates[type] = value;
+
+    callLuaField("onExperienceRateChange", type, value);
+}
+
+void LocalPlayer::setStoreExpBoostTime(uint16_t value)
+{
+    if (m_storeExpBoostTime == value)
+        return;
+
+    m_storeExpBoostTime = value;
 }

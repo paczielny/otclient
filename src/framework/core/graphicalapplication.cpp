@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,22 +21,18 @@
  */
 
 #include "graphicalapplication.h"
-#include "garbagecollection.h"
 
-#include "framework/stdext/time.h"
-#include <framework/core/asyncdispatcher.h>
-#include <framework/core/clock.h>
-#include <framework/core/eventdispatcher.h>
-#include <framework/graphics/drawpool.h>
-#include <framework/graphics/drawpoolmanager.h>
-#include <framework/graphics/graphics.h>
-#include <framework/graphics/image.h>
-#include <framework/graphics/particlemanager.h>
-#include <framework/graphics/texturemanager.h>
-#include <framework/input/mouse.h>
-#include <framework/platform/platformwindow.h>
-#include <framework/ui/uimanager.h>
-#include <framework/ui/uiwidget.h>
+#include "asyncdispatcher.h"
+#include "clock.h"
+#include "eventdispatcher.h"
+#include "garbagecollection.h"
+#include "framework/graphics/drawpoolmanager.h"
+#include "framework/graphics/graphics.h"
+#include "framework/graphics/image.h"
+#include "framework/graphics/particlemanager.h"
+#include "framework/graphics/texturemanager.h"
+#include "framework/input/mouse.h"
+#include "framework/ui/uimanager.h"
 
 #ifdef FRAMEWORK_SOUND
 #include <framework/sound/soundmanager.h>
@@ -45,6 +41,8 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
+#include <framework/html/htmlmanager.h>
+#include <framework/platform/platformwindow.h>
 
 GraphicalApplication g_app;
 
@@ -58,6 +56,9 @@ void GraphicalApplication::init(std::vector<std::string>& args, ApplicationConte
     // setup platform window
     g_window.init();
     g_window.hide();
+
+    // set the window title color
+    g_window.setTitleBarColor(Color::black);
 
     g_window.setOnResize([this](auto&& PH1) {
         if (!m_running) resize(PH1);
@@ -106,6 +107,7 @@ void GraphicalApplication::terminate()
     g_particles.terminate();
 
     // destroy any remaining widget
+    g_html.terminate();
     g_ui.terminate();
 
     Application::terminate();
@@ -178,9 +180,6 @@ void GraphicalApplication::run()
 #endif
     // THREAD - POOL & MAP
     const auto& mapThread = g_asyncDispatcher.submit_task([this] {
-        const auto uiPool = g_drawPool.get(DrawPoolType::FOREGROUND);
-        const auto fgMapPool = g_drawPool.get(DrawPoolType::FOREGROUND_MAP);
-
         BS::multi_future<void> tasks;
 
         g_luaThreadId = g_eventThreadId = stdext::getThreadId();
@@ -192,39 +191,24 @@ void GraphicalApplication::run()
                 continue;
             }
 
-            if (!m_drawEvents->canDraw(DrawPoolType::MAP)) {
-                if (uiPool->canRepaint())
-                    g_ui.render(DrawPoolType::FOREGROUND);
-                m_mapProcessFrameCounter.update();
-                continue;
+            if (m_drawEvents->canDraw(DrawPoolType::MAP)) {
+                m_drawEvents->preLoad();
+
+                for (const auto type : { DrawPoolType::LIGHT , DrawPoolType::FOREGROUND, DrawPoolType::FOREGROUND_MAP }) {
+                    if (m_drawEvents->canDraw(type)) {
+                        tasks.emplace_back(g_asyncDispatcher.submit_task([this, type] {
+                            m_drawEvents->draw(type);
+                        }));
+                    }
+                }
+
+                m_drawEvents->draw(DrawPoolType::MAP);
+
+                tasks.wait();
+                tasks.clear();
+            } else if (m_drawEvents->canDraw(DrawPoolType::FOREGROUND)) {
+                g_ui.render(DrawPoolType::FOREGROUND);
             }
-
-            m_drawEvents->preLoad();
-
-            tasks.clear();
-
-            if (m_drawEvents->canDraw(DrawPoolType::LIGHT)) {
-                tasks.emplace_back(g_asyncDispatcher.submit_task([this] {
-                    m_drawEvents->draw(DrawPoolType::LIGHT);
-                }));
-            }
-
-            if (uiPool->canRepaint()) {
-                tasks.emplace_back(g_asyncDispatcher.submit_task([this] {
-                    g_ui.render(DrawPoolType::FOREGROUND);
-                }));
-            }
-
-            if (fgMapPool->canRepaint()) {
-                tasks.emplace_back(g_asyncDispatcher.submit_task([this] {
-                    m_drawEvents->draw(DrawPoolType::CREATURE_INFORMATION);
-                    m_drawEvents->draw(DrawPoolType::FOREGROUND_MAP);
-                }));
-            }
-
-            m_drawEvents->draw(DrawPoolType::MAP);
-
-            tasks.wait();
 
             m_mapProcessFrameCounter.update();
         }
@@ -317,7 +301,7 @@ void GraphicalApplication::inputEvent(const InputEvent& event)
 }
 
 bool GraphicalApplication::isLoadingAsyncTexture() { return m_loadingAsyncTexture || (m_drawEvents && m_drawEvents->isLoadingAsyncTexture()); }
-
+bool GraphicalApplication::isScaled() { return g_window.getDisplayDensity() != 1.f; }
 void GraphicalApplication::setLoadingAsyncTexture(bool v) {
     if (m_drawEvents && m_drawEvents->isUsingProtobuf())
         v = true;

@@ -1,3 +1,6 @@
+-- to-do
+-- change to ItemsDatabase.setTier(UIitem) to UIitem:setTier()
+-- move this to "\modules\gamelib\ui\uiitem.lua" or "\modules\game_interface\widgets\uiitem.lua" why are 2 ?  
 ItemsDatabase = {}
 
 ItemsDatabase.rarityColors = {
@@ -40,36 +43,33 @@ local function clipfunction(value)
 end
 
 function ItemsDatabase.setRarityItem(widget, item, style)
-    if not g_game.getFeature(GameColorizedLootValue) then
+    if not g_game.getFeature(GameColorizedLootValue) or not widget then
         return
     end
-
-    if not widget then
-        return
-    end
-
     local frameOption = modules.client_options.getOption('framesRarity')
     if frameOption == "none" then
         return
     end
+    local imagePath = '/images/ui/item'
+    local clip = nil
     if item then
         local price = type(item) == "number" and item or (item and item:getMeanPrice()) or 0
         local itemRarity = getColorForValue(price)
         if itemRarity then
-            local clip = clipfunction(price)
+            clip = clipfunction(price)
             if clip ~= "" then
-                local imagePath = '/images/ui/item'
                 if frameOption == "frames" then
                     imagePath = "/images/ui/rarity_frames"
                 elseif frameOption == "corners" then
                     imagePath = "/images/ui/containerslot-coloredges"
                 end
-                widget:setImageClip(clip)
-                widget:setImageSource(imagePath)
+            else
+                clip = nil
             end
         end
     end
-
+    widget:setImageClip(clip)
+    widget:setImageSource(imagePath)
     if style then
         widget:setStyle(style)
     end
@@ -82,7 +82,22 @@ end
 function ItemsDatabase.setColorLootMessage(text)
     local function coloringLootName(match)
         local id, itemName = match:match("(%d+)|(.+)")
-        local itemInfo = g_things.getThingType(tonumber(id), ThingCategoryItem):getMeanPrice()
+        if not id or not itemName then
+            -- If pattern doesn't match itemId|itemName format, return the original match with braces
+            return "{" .. match .. "}"
+        end
+        
+        local itemId = tonumber(id)
+        if not itemId then
+            return itemName or match
+        end
+        
+        local thingType = g_things.getThingType(itemId, ThingCategoryItem)
+        if not thingType then
+            return itemName
+        end
+        
+        local itemInfo = thingType:getMeanPrice()
         if itemInfo then
             local color = ItemsDatabase.getColorForRarity(getColorForValue(itemInfo))
             return "{" .. itemName .. ", " .. color .. "}"
@@ -93,23 +108,50 @@ function ItemsDatabase.setColorLootMessage(text)
     return text:gsub("{(.-)}", coloringLootName)
 end
 
-function ItemsDatabase.setTier(widget, item)
-    if not g_game.getFeature(GameThingUpgradeClassification) or not widget then
+function ItemsDatabase.setTier(widget, item, isSmall)
+    if not g_game.getFeature(GameThingUpgradeClassification) or not widget or not widget.tier then
         return
     end
-    local tier = type(item) == "number" and item or (item and item:getTier()) or 0
-    if tier and tier > 0 then
-        local xOffset = (math.min(math.max(tier, 1), 10) - 1) * 9
-        widget.tier:setImageClip({
-            x = xOffset,
-            y = 0,
-            width = 10,
-            height = 9
-        })
-        widget.tier:setVisible(true)
-    else
-        widget.tier:setVisible(false)
+    if isSmall == nil then
+        isSmall = true
     end
+    local tier = type(item) == "number" and item or (item and item:getTier()) or 0
+    if tier <= 0 then
+        widget.tier:setVisible(false)
+        return
+    end
+    local config
+    if isSmall then
+        local normalizedTier = math.min(math.max(tier, 1), 10)
+        config = {
+            xOffset = (normalizedTier - 1) * 9,
+            width = 10,
+            height = 9,
+            size = "10 9",
+            source = '/images/inventory/tiers-strip'
+        }
+    else
+        local normalizedTier = math.min(math.max(tier, 1), 18)
+        local xOffset = (normalizedTier - 1) * 18 + 1
+        config = {
+            xOffset = xOffset,
+            width = 18,
+            height = 16,
+            size = "18 16",
+            source = '/images/inventory/tiers-strip-big'
+        }
+    end
+    
+    widget.tier:setImageClip({
+        x = config.xOffset,
+        y = 0,
+        width = config.width,
+        height = config.height
+    })
+    widget.tier:setSize(config.size)
+    widget.tier:setImageSource(config.source)
+    widget.tier:setImageSize(config.size)
+    widget.tier:setVisible(true)
 end
 
 function ItemsDatabase.setCharges(widget, item, style)

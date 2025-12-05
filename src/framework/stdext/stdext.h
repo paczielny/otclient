@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,16 +22,11 @@
 
 #pragma once
 
-#include <cmath>
-#include <cstring>
-#include <ctime>
-
 #include "types.h"
 
 #include "cast.h"
 #include "compiler.h"
 #include "demangle.h"
-#include "format.h"
 #include "hash.h"
 #include "math.h"
 #include "qrcodegen.h"

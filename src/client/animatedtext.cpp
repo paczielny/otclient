@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,12 @@
  */
 
 #include "animatedtext.h"
+
 #include "game.h"
 #include "gameconfig.h"
 #include "map.h"
-#include <framework/core/eventdispatcher.h>
-#include <framework/core/graphicalapplication.h>
+#include "framework/core/eventdispatcher.h"
+#include "framework/core/graphicalapplication.h"
 
 AnimatedText::AnimatedText()
 {
@@ -92,7 +93,7 @@ bool AnimatedText::merge(const AnimatedTextPtr& other)
     try {
         const int number = stdext::safe_cast<int>(m_cachedText.getText());
         const int otherNumber = stdext::safe_cast<int>(other->getCachedText().getText());
-        m_cachedText.setText(stdext::format("%d", number + otherNumber));
+        m_cachedText.setText(fmt::format("{}", number + otherNumber));
         return true;
     } catch (...) {
         return false;

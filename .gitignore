@@ -56,6 +56,7 @@ vc17/
 *.exe
 *.exp
 *.lib
+*.bak
 
 # Protobuf generated files
 *.pb.cc
@@ -70,6 +71,7 @@ ipch/
 *.sdf
 *.cachefile
 *.VC.db
+*.filters
 
 # Visual Studio profiler
 *.psess
@@ -217,6 +219,7 @@ tags
 *.dat
 *.pic
 config.otml
+*.patch
 
 ## Cmake cache
 CMakeLists.txt.user

@@ -11,6 +11,15 @@ panels = {
     miscHelp = nil,
     keybindsPanel = nil
 }
+
+-- Hook into application exit to ensure settings are saved
+local function onAppExit()
+    g_settings.save()
+end
+
+-- Register the exit hook when the module is loaded
+connect(g_app, { onExit = onAppExit })
+
 -- LuaFormatter off
 local buttons = { {
 
@@ -31,6 +40,9 @@ local buttons = { {
     }, {
         text = "Console",
         open = "interfaceConsole"
+    }, {
+        text = "Action Bars",
+        open = "actionbars"
     } }
 }, {
     text = "Graphics",
@@ -102,6 +114,8 @@ local function setupComboBox()
     local framesRarityCombobox = panels.interface:recursiveGetChildById('frames')
     local vocationPresetsCombobox = panels.keybindsPanel:recursiveGetChildById('list')
     local listKeybindsPanel = panels.keybindsPanel:recursiveGetChildById('list')
+    local mouseControlModeCombobox = panels.generalPanel:recursiveGetChildById('mouseControlMode')
+    local lootControlModeCombobox = panels.generalPanel:recursiveGetChildById('lootControlMode')
 
     for k, v in pairs({ { 'Disabled', 'disabled' }, { 'Default', 'default' }, { 'Full', 'full' } }) do
         crosshairCombo:addOption(v[1], v[2])
@@ -111,6 +125,25 @@ local function setupComboBox()
         setOption('crosshair', comboBox:getCurrentOption().data)
     end
 
+    mouseControlModeCombobox:addOption('Regular Controls', 0)
+    mouseControlModeCombobox:addOption('Classic Controls', 1)
+    mouseControlModeCombobox:addOption('Left Smart-Click', 2)
+
+    lootControlModeCombobox:addOption('Loot: Right', 0)
+    lootControlModeCombobox:addOption('Loot: SHIFT+Right', 1)
+    lootControlModeCombobox:addOption('Loot: Left', 2)
+    
+    lootControlModeCombobox.onOptionChange = function(comboBox, option)
+        setOption('lootControlMode', comboBox:getCurrentOption().data)
+    end
+
+    mouseControlModeCombobox.onOptionChange = function(comboBox, option)
+        local selectedOption = comboBox:getCurrentOption().data
+        setOption('mouseControlMode', selectedOption)
+        
+        -- The mouseControlMode action handler will take care of updating
+        -- classicControl and smartLeftClick, and their UI visibility
+    end
 
     for k, t in pairs({ 'None', 'Antialiasing', 'Smooth Retro' }) do
         antialiasingModeCombobox:addOption(t, k - 1)
@@ -166,13 +199,72 @@ local function setup()
         local v = obj.value
 
         if type(v) == 'boolean' then
-            setOption(k, g_settings.getBoolean(k), true)
+            local value = g_settings.getBoolean(k)
+            setOption(k, value, true)
         elseif type(v) == 'number' then
-            setOption(k, g_settings.getNumber(k), true)
+            local value = g_settings.getNumber(k)
+            setOption(k, value, true)
         elseif type(v) == 'string' then
-            setOption(k, g_settings.getString(k), true)
+            local value = g_settings.getString(k)
+            setOption(k, value, true)
         end
     end
+    
+    -- Special handling for mouseControlMode to ensure it's in sync with the underlying options
+    local mouseControlMode = g_settings.getNumber('mouseControlMode')
+    if mouseControlMode ~= nil then
+        setOption('mouseControlMode', mouseControlMode, true)
+    else
+        -- Derive from classicControl and smartLeftClick if mouseControlMode isn't set
+        local classicControl = g_settings.getBoolean('classicControl')
+        local smartLeftClick = g_settings.getBoolean('smartLeftClick')
+        
+        if classicControl then
+            setOption('mouseControlMode', 1, true)
+        elseif smartLeftClick then
+            setOption('mouseControlMode', 2, true)
+        else
+            setOption('mouseControlMode', 0, true)
+        end
+    end
+    
+    -- Schedule combobox updates to ensure they happen after UI setup is complete
+    scheduleEvent(function()
+        local mouseControlModeCombobox = panels.generalPanel:recursiveGetChildById('mouseControlMode')
+        local lootControlModeCombobox = panels.generalPanel:recursiveGetChildById('lootControlMode')
+        
+        if mouseControlModeCombobox then
+            -- Use setCurrentOptionByData for more precise control
+            for i = 0, 2 do
+                if i == options.mouseControlMode.value then
+                    mouseControlModeCombobox:setCurrentOptionByData(i)
+                    break
+                end
+            end
+        end
+        
+        if lootControlModeCombobox then
+            -- Use setCurrentOptionByData for more precise control
+            for i = 0, 2 do
+                if i == options.lootControlMode.value then
+                    lootControlModeCombobox:setCurrentOptionByData(i)
+                    break
+                end
+            end
+        end
+        
+        -- Update loot control mode visibility
+        if lootControlModeCombobox and mouseControlModeCombobox then
+            if options.mouseControlMode.value == 1 then
+                lootControlModeCombobox:setVisible(true)
+            else
+                lootControlModeCombobox:setVisible(false)
+            end
+        end
+    end, 100)
+    
+    -- Ensure settings are saved
+    g_settings.save()
 end
 
 
@@ -206,6 +298,7 @@ function controller:onInit()
     panels.interface = g_ui.loadUI('styles/interface/interface', controller.ui.optionsTabContent)
     panels.interfaceConsole = g_ui.loadUI('styles/interface/console', controller.ui.optionsTabContent)
     panels.interfaceHUD = g_ui.loadUI('styles/interface/HUD', controller.ui.optionsTabContent)
+    panels.actionbars = g_ui.loadUI('styles/interface/actionbars', controller.ui.optionsTabContent)
 
     panels.soundPanel = g_ui.loadUI('styles/sound/audio', controller.ui.optionsTabContent)
 
@@ -216,6 +309,31 @@ function controller:onInit()
 
     configureCharacterCategories()
     addEvent(setup)
+    
+    -- Add a special delayed event to update comboboxes after everything is loaded
+    scheduleEvent(function()
+        local mouseControlModeCombobox = panels.generalPanel:recursiveGetChildById('mouseControlMode')
+        local lootControlModeCombobox = panels.generalPanel:recursiveGetChildById('lootControlMode')
+        
+        if mouseControlModeCombobox then
+            for i = 0, 2 do
+                if i == options.mouseControlMode.value then
+                    mouseControlModeCombobox:setCurrentOptionByData(i)
+                    break
+                end
+            end
+        end
+        
+        if lootControlModeCombobox then
+            for i = 0, 2 do
+                if i == options.lootControlMode.value then
+                    lootControlModeCombobox:setCurrentOptionByData(i)
+                    break
+                end
+            end
+        end
+    end, 1000)  -- 1 second delay to make sure everything is loaded
+    
     init_binds()
 
     Keybind.new("UI", "Toggle Fullscreen", "Ctrl+Shift+F", "")
@@ -252,13 +370,20 @@ function controller:onInit()
 end
 
 function controller:onTerminate()
+    -- Make sure all settings are saved before terminating
+    g_settings.save()
+    
+    -- Disconnect from app exit
+    disconnect(g_app, { onExit = onAppExit })
+    
     extraWidgets.optionsButton:destroy()
     extraWidgets.audioButton:destroy()
     panels = {}
     extraWidgets = {}
     buttons = {}
-    Keybind.delete("UI", "Toggle Full Screen")
+    Keybind.delete("UI", "Toggle Fullscreen")
     Keybind.delete("UI", "Show/hide Creature Names and Bars")
+    Keybind.delete("UI", "Show/hide FPS / lag indicator")
     Keybind.delete("Sound", "Mute/unmute")
 
     terminate_binds()
@@ -280,7 +405,12 @@ function setOption(key, value, force)
     end
 
     local option = options[key]
-    if option == nil or not force and option.value == value then
+    if option == nil then
+        g_logger.warning(string.format("[client_options] Attempted to set unknown option: '%s'", key))
+        return
+    end
+    
+    if not force and option.value == value then
         return
     end
 
@@ -318,7 +448,12 @@ function setupOptionsMainButton()
 end
 
 function getOption(key)
-    return options[key].value
+    local option = options[key]
+    if option == nil then
+        g_logger.warning(string.format("[client_options] Attempted to get unknown option: '%s'", key))
+        return nil
+    end
+    return option.value
 end
 
 function show()
@@ -328,7 +463,13 @@ function show()
 end
 
 function hide()
+    -- Save all settings when closing the options window
+    g_settings.save()
     controller.ui:hide()
+end
+
+function saveOptions()
+    g_settings.save()
 end
 
 function toggle()
@@ -403,6 +544,7 @@ local function createSubWidget(parent, subId, subButton)
     subWidget.Button.Title:setText(subButton.text)
     subWidget:setVisible(false)
     subWidget.open = subButton.open
+    subWidget.callbackFunc = subButton.callbackFunc
 
     function subWidget.Button.onClick()
         local selectedOption = controller.ui.selectedOption
@@ -425,6 +567,9 @@ local function createSubWidget(parent, subId, subButton)
             controller.ui.selectedOption = panelToShow
         else
             print("Error: panelToShow is nil or does not exist in panels")
+        end
+        if subWidget.callbackFunc then
+            subWidget.callbackFunc()
         end
     end
 
@@ -591,7 +736,7 @@ function removeButton(categoryText, buttonText)
     end
 end
 
-function addButton(categoryText, buttonText, openPanel)
+function addButton(categoryText, buttonText, openPanel, callback)
     for _, category in ipairs(buttons) do
         if category.text == categoryText then
             if not category.subCategories then
@@ -600,7 +745,8 @@ function addButton(categoryText, buttonText, openPanel)
             local panelName = type(openPanel) == "string" and openPanel or getPanelName(openPanel)
             table.insert(category.subCategories, {
                 text = buttonText,
-                open = panelName
+                open = panelName,
+                callbackFunc = callback
             })
             if type(openPanel) ~= "string" then
                 panels[panelName] = openPanel
@@ -626,4 +772,27 @@ end
 
 function getPanel()
     return controller.ui.optionsTabContent
+end
+
+function openOptionsCategory(category, subcategory)
+    if not controller.ui:isVisible() then
+        show()
+    end
+    for i = 1, controller.ui.optionsTabBar:getChildCount() do
+        local widget = controller.ui.optionsTabBar:getChildByIndex(i)
+        if widget and widget.Button.Title:getText() == category then
+            widget.Button:onClick()
+            if subcategory and widget.subCategories then
+                for subId, _ in ipairs(widget.subCategories) do
+                    local subWidget = widget:getChildById(subId)
+                    if subWidget and subWidget.Button.Title:getText() == subcategory then
+                        subWidget.Button:onClick()
+                        return true
+                    end
+                end
+            end
+            return true
+        end
+    end
+    return false
 end

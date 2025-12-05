@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,10 +23,18 @@
 #pragma once
 
 #include "global.h"
-#include <framework/net/declarations.h>
-#include <framework/ui/declarations.h>
 
- // core
+enum FrameGroupType : uint8_t;
+enum ThingCategory : uint8_t;
+enum StaticDataCategory : uint8_t;
+enum ThingAttr : uint8_t;
+enum ThingFlagAttr : uint64_t;
+enum STACK_PRIORITY : uint8_t;
+enum PLAYER_ACTION : uint8_t;
+enum ITEM_CATEGORY : uint8_t;
+enum SpriteMask : uint8_t;
+
+// core
 class Map;
 class Game;
 class MapView;
@@ -96,8 +104,6 @@ using ItemTypeList = std::vector<ItemTypePtr>;
 
 using TileList = std::list<TilePtr>;
 using ItemVector = std::vector<ItemPtr>;
-
-using TileMap = stdext::map<Position, TilePtr, Position::Hasher>;
 
 // net
 class ProtocolLogin;

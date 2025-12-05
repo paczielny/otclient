@@ -53,35 +53,80 @@ function initialize()
         onUpdateImbuementTracker = onUpdateImbuementTracker
     })
     
-    imbuementTrackerButton = modules.game_mainpanel.addToggleButton('imbuementTrackerButton', tr('Imbuement Tracker'), '/images/options/button_imbuementtracker', toggle)
     imbuementTracker = g_ui.createWidget('ImbuementTracker', modules.game_interface.getRightPanel())
+    
+    -- Set minimum height for imbuement tracker window
+    imbuementTracker:setContentMinimumHeight(80)
 
-    imbuementTracker.menuButton.onClick = function(widget, mousePos, mouseButton)
-        local menu = g_ui.createWidget('ImbuementTrackerMenu')
-        menu:setGameMenu(true)
-        for _, choice in ipairs(menu:getChildren()) do
-            local choiceId = choice:getId()
-            choice:setChecked(getFilter(choiceId))
-            choice.onCheckChange = function()
-                setFilter(choiceId)
-                menu:destroy()
-            end
-        end
-        menu:display(mousePos)
-        return true
+    -- Hide toggleFilterButton and adjust button positioning
+    local toggleFilterButton = imbuementTracker:recursiveGetChildById('toggleFilterButton')
+    if toggleFilterButton then
+        toggleFilterButton:setVisible(false)
+        toggleFilterButton:setOn(false)
+    end
+    
+    -- Hide newWindowButton
+    local newWindowButton = imbuementTracker:recursiveGetChildById('newWindowButton')
+    if newWindowButton then
+        newWindowButton:setVisible(false)
     end
 
-    imbuementTracker:moveChildToIndex(imbuementTracker.menuButton, 4)
+    -- Make sure contextMenuButton is visible and set up its positioning and click handler
+    local contextMenuButton = imbuementTracker:recursiveGetChildById('contextMenuButton')
+    local lockButton = imbuementTracker:recursiveGetChildById('lockButton')
+    local minimizeButton = imbuementTracker:recursiveGetChildById('minimizeButton')
+    
+    if contextMenuButton then
+        contextMenuButton:setVisible(true)
+        
+        -- Position contextMenuButton where toggleFilterButton was (similar to containers without upButton)
+        if minimizeButton then
+            contextMenuButton:breakAnchors()
+            contextMenuButton:addAnchor(AnchorTop, minimizeButton:getId(), AnchorTop)
+            contextMenuButton:addAnchor(AnchorRight, minimizeButton:getId(), AnchorLeft)
+            contextMenuButton:setMarginRight(7)
+            contextMenuButton:setMarginTop(0)
+        end
+        
+        -- Position lockButton to the left of contextMenu
+        if lockButton then
+            lockButton:breakAnchors()
+            lockButton:addAnchor(AnchorTop, contextMenuButton:getId(), AnchorTop)
+            lockButton:addAnchor(AnchorRight, contextMenuButton:getId(), AnchorLeft)
+            lockButton:setMarginRight(2)
+            lockButton:setMarginTop(0)
+        end
+        
+        contextMenuButton.onClick = function(widget, mousePos, mouseButton)
+            local menu = g_ui.createWidget('ImbuementTrackerMenu')
+            menu:setGameMenu(true)
+            for _, choice in ipairs(menu:getChildren()) do
+                local choiceId = choice:getId()
+                choice:setChecked(getFilter(choiceId))
+                choice.onCheckChange = function()
+                    setFilter(choiceId)
+                    menu:destroy()
+                end
+            end
+            menu:display(mousePos)
+            return true
+        end
+    end
+
     imbuementTracker:setup()
     imbuementTracker:hide()
 end
 
 function onMiniWindowOpen()
-    imbuementTrackerButton:setOn(true)
+    if imbuementTrackerButton then
+        imbuementTrackerButton:setOn(true)
+    end
 end
 
 function onMiniWindowClose()
-    imbuementTrackerButton:setOn(false)
+    if imbuementTrackerButton then
+        imbuementTrackerButton:setOn(false)
+    end
 end
 
 function terminate()
@@ -90,11 +135,12 @@ function terminate()
         onGameEnd = onGameEnd,
         onUpdateImbuementTracker = onUpdateImbuementTracker
     })
-    
-    imbuementTrackerButton:destroy()
-    imbuementTracker:destroy()
 
-    imbuementTrackerButton = nil
+    if imbuementTrackerButton then
+        imbuementTrackerButton:destroy()
+        imbuementTrackerButton = nil
+    end
+    imbuementTracker:destroy()
 end
 
 function toggle()
@@ -156,17 +202,37 @@ local function addTrackedItem(item)
     ItemsDatabase.setTier(trackedItem.item, trackedItem.item:getItem())
     trackedItem.item:setVirtual(true)
     local maxDuration = 0
+    
+    -- Create a table to track which slots are active
+    local activeSlots = {}
     for _, imbuementSlot in ipairs(item['slots']) do
-        local slot = g_ui.createWidget('ImbuementSlot')
-        slot:setId('slot' .. imbuementSlot['id'])
-        slot:setImageSource('/images/game/imbuing/icons/' .. imbuementSlot['iconId'])
-        slot:setMarginLeft(3)
-        setDuration(slot.duration, imbuementSlot['duration'])
-        trackedItem.imbuementSlots:addChild(slot)
-        if imbuementSlot['duration'] > maxDuration then
-            maxDuration = imbuementSlot['duration']
+        activeSlots[imbuementSlot['id']] = imbuementSlot
+    end
+    
+    -- Add slots (both active and inactive) based on totalSlots
+    local totalSlots = item['totalSlots'] or 0
+    for slotIndex = 0, totalSlots - 1 do
+        local imbuementSlot = activeSlots[slotIndex]
+        if imbuementSlot then
+            -- Active slot with imbuement
+            local slot = g_ui.createWidget('ImbuementSlot')
+            slot:setId('slot' .. imbuementSlot['id'])
+            slot:setImageSource('/images/game/imbuing/icons/' .. imbuementSlot['iconId'])
+            slot:setMarginLeft(3)
+            setDuration(slot.duration, imbuementSlot['duration'])
+            trackedItem.imbuementSlots:addChild(slot)
+            if imbuementSlot['duration'] > maxDuration then
+                maxDuration = imbuementSlot['duration']
+            end
+        else
+            -- Inactive slot placeholder
+            local inactiveSlot = g_ui.createWidget('ImbuementSlotInactive')
+            inactiveSlot:setId('inactiveSlot' .. slotIndex)
+            inactiveSlot:setMarginLeft(3)
+            trackedItem.imbuementSlots:addChild(inactiveSlot)
         end
     end
+    
     return trackedItem, maxDuration
 end
 
@@ -175,7 +241,15 @@ function onUpdateImbuementTracker(items)
     for _, item in ipairs(getTrackedItems(items)) do
         local trackedItem, duration = addTrackedItem(item)
         local show = true
-        if duration == 0 and not getFilter('showNoImbuements') then
+        local hasActiveImbuements = #item['slots'] > 0 and duration > 0
+        local hasSlots = (item['totalSlots'] or 0) > 0
+        
+        -- Show items based on filters
+        if not hasActiveImbuements and hasSlots and not getFilter('showNoImbuements') then
+            -- Item has slots but no active imbuements, check showNoImbuements filter
+            show = false
+        elseif not hasActiveImbuements and not hasSlots then
+            -- Item has no slots at all, don't show it
             show = false
         elseif duration > 0 and duration < 3600 and not getFilter('showLessThan1h') then
             show = false
@@ -190,11 +264,10 @@ end
 
 function onGameStart()
     if g_game.getClientVersion() >= 1100 then
+        imbuementTrackerButton = modules.game_mainpanel.addToggleButton('imbuementTrackerButton', tr('Imbuement Tracker'), '/images/options/button_imbuementtracker', toggle)
         g_game.imbuementDurations(imbuementTrackerButton:isOn())
         imbuementTracker:setupOnStart()
         loadFilters()
-    else
-        imbuementTrackerButton:hide()
     end
 end
 

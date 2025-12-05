@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,12 +21,21 @@
  */
 
 #include <framework/net/outputmessage.h>
-#include <framework/util/crypt.h>
+
+#include "client/game.h"
+#include "framework/util/crypt.h"
+
+OutputMessage::OutputMessage() {
+    m_maxHeaderSize = g_game.getClientVersion() >= 1405 ? 7 : 8;
+    m_writePos = m_maxHeaderSize;
+    m_headerPos = m_maxHeaderSize;
+}
 
 void OutputMessage::reset()
 {
-    m_writePos = MAX_HEADER_SIZE;
-    m_headerPos = MAX_HEADER_SIZE;
+    m_maxHeaderSize = g_game.getClientVersion() >= 1405 ? 7 : 8;
+    m_writePos = m_maxHeaderSize;
+    m_headerPos = m_maxHeaderSize;
     m_messageSize = 0;
 }
 
@@ -76,9 +85,18 @@ void OutputMessage::addString(const std::string_view buffer)
 {
     const int len = buffer.length();
     if (len > MAX_STRING_LENGTH)
-        throw stdext::exception(stdext::format("string length > %d", MAX_STRING_LENGTH));
+        throw stdext::exception(fmt::format("string length > {}", MAX_STRING_LENGTH));
     checkWrite(len + 2);
     addU16(len);
+    memcpy(m_buffer + m_writePos, buffer.data(), len);
+    m_writePos += len;
+    m_messageSize += len;
+}
+
+void OutputMessage::addBytes(const std::string_view buffer)
+{
+    const int len = buffer.length();
+    checkWrite(len);
     memcpy(m_buffer + m_writePos, buffer.data(), len);
     m_writePos += len;
     m_messageSize += len;
@@ -106,7 +124,8 @@ void OutputMessage::encryptRsa()
 
 void OutputMessage::writeChecksum()
 {
-    const uint32_t checksum = stdext::adler32(m_buffer + m_headerPos, m_messageSize);
+    const auto messageSize = static_cast<uInt>(m_messageSize);
+    const uint32_t checksum = stdext::computeChecksum({ m_buffer + m_headerPos, messageSize });
     assert(m_headerPos - 4 >= 0);
     m_headerPos -= 4;
     stdext::writeULE32(m_buffer + m_headerPos, checksum);
@@ -129,6 +148,19 @@ void OutputMessage::writeMessageSize()
     m_messageSize += 2;
 }
 
+void OutputMessage::writePaddingAmount()
+{
+    const uint8_t paddingAmount = 8 - (m_messageSize % 8) - 1;
+    addPaddingBytes(paddingAmount);
+    prependU8(paddingAmount);
+}
+
+void OutputMessage::writeHeaderSize()
+{
+    auto headerSize = static_cast<uint16_t>((m_messageSize - 4) / 8); // -4 for checksum
+    prependU16(headerSize); // Uses writeULE16 and updates `m_headerPos` and `m_messageSize`
+}
+
 bool OutputMessage::canWrite(const int bytes) const
 {
     return m_writePos + bytes <= BUFFER_MAXSIZE;
@@ -138,4 +170,27 @@ void OutputMessage::checkWrite(const int bytes)
 {
     if (!canWrite(bytes))
         throw stdext::exception("OutputMessage max buffer size reached");
+}
+
+void OutputMessage::prependU8(uint8_t value)
+{
+    assert(m_headerPos > 0);
+    m_headerPos--;
+    m_writePos--;
+    m_buffer[m_headerPos] = value;
+    m_messageSize++;
+}
+
+void OutputMessage::prependU16(uint16_t value)
+{
+    assert(m_headerPos >= 2);
+    m_headerPos -= 2;
+    m_writePos -= 2;
+    stdext::writeULE16(m_buffer + m_headerPos, value);
+    m_messageSize += 2;
+}
+
+uint8_t* OutputMessage::getXteaEncryptionBuffer()
+{
+    return g_game.getClientVersion() >= 1405 ? getHeaderBuffer() : getDataBuffer() - 2;
 }

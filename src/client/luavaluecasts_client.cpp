@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,10 @@
  */
 
 #include "luavaluecasts_client.h"
-#include <framework/luaengine/luainterface.h>
+
+#include "game.h"
+#include "item.h"
+#include "framework/luaengine/luainterface.h"
 
 int push_luavalue(const Outfit& outfit)
 {
@@ -309,9 +312,11 @@ int push_luavalue(const Imbuement& i)
 
 int push_luavalue(const ImbuementTrackerItem& i)
 {
-    g_lua.createTable(0, 3);
+    g_lua.createTable(0, 4);
     g_lua.pushInteger(i.slot);
     g_lua.setField("slot");
+    g_lua.pushInteger(i.totalSlots);
+    g_lua.setField("totalSlots");
     g_lua.pushObject(i.item);
     g_lua.setField("item");
     g_lua.createTable(i.slots.size(), 0);
@@ -454,7 +459,7 @@ int push_luavalue(const StoreCategory& category) {
 }
 
 int push_luavalue(const SubOffer& subOffer) {
-    g_lua.createTable(0, 9);
+    g_lua.createTable(0, 14);
     g_lua.pushInteger(subOffer.id);
     g_lua.setField("id");
     g_lua.pushInteger(subOffer.count);
@@ -468,6 +473,8 @@ int push_luavalue(const SubOffer& subOffer) {
     if (subOffer.disabled) {
         g_lua.pushInteger(subOffer.disabledReason);
         g_lua.setField("disabledReason");
+        g_lua.pushInteger(subOffer.reasonIdDisable);
+        g_lua.setField("reasonIdDisable");
     }
     g_lua.pushInteger(subOffer.state);
     g_lua.setField("state");
@@ -477,11 +484,27 @@ int push_luavalue(const SubOffer& subOffer) {
         g_lua.pushInteger(subOffer.basePrice);
         g_lua.setField("basePrice");
     }
+    if (g_game.getClientVersion() < 1310) {
+        g_lua.pushString(subOffer.name);
+        g_lua.setField("name");
+        g_lua.pushString(subOffer.description);
+        g_lua.setField("description");
+
+        g_lua.createTable(0, subOffer.icons.size());
+        for (size_t i = 0; i < subOffer.icons.size(); ++i) {
+            g_lua.pushString(subOffer.icons[i]);
+            g_lua.rawSeti(i + 1);
+        }
+        g_lua.setField("icons");
+
+        g_lua.pushString(subOffer.parent);
+        g_lua.setField("parent");
+    }
     return 1;
 }
 
 int push_luavalue(const StoreOffer& offer) {
-    g_lua.createTable(0, 14);
+    g_lua.createTable(0, 20);
     g_lua.pushString(offer.name);
     g_lua.setField("name");
 
@@ -492,10 +515,29 @@ int push_luavalue(const StoreOffer& offer) {
     }
     g_lua.setField("subOffers");
 
-    g_lua.pushInteger(offer.ofertaid);
-    g_lua.setField("ofertaid");
-    g_lua.pushString(offer.description);
-    g_lua.setField("description");
+    if (g_game.getClientVersion() < 1310) { // oldProtocol
+        g_lua.pushString(offer.description);
+        g_lua.setField("description");
+        g_lua.pushInteger(offer.id);
+        g_lua.setField("id");
+        g_lua.pushInteger(offer.price);
+        g_lua.setField("price");
+        g_lua.pushInteger(offer.state);
+        g_lua.setField("state");
+        g_lua.pushInteger(offer.stateNewUntil);
+        g_lua.setField("stateNewUntil");
+        g_lua.pushInteger(offer.basePrice);
+        g_lua.setField("basePrice");
+        g_lua.pushBoolean(offer.disabled);
+        g_lua.setField("disabled");
+        if (offer.disabled) {
+            g_lua.pushString(offer.reasonIdDisable);
+            g_lua.setField("reasonIdDisable");
+        }
+    } else {
+        g_lua.pushBoolean(offer.configurable);
+        g_lua.setField("configurable");
+    }
     g_lua.pushInteger(offer.type);
     g_lua.setField("type");
 
@@ -544,8 +586,6 @@ int push_luavalue(const StoreOffer& offer) {
     g_lua.setField("popularityScore");
     g_lua.pushInteger(offer.stateNewUntil);
     g_lua.setField("stateNewUntil");
-    g_lua.pushBoolean(offer.configurable);
-    g_lua.setField("configurable");
     g_lua.pushInteger(offer.productsCapacity);
     g_lua.setField("productsCapacity");
 
@@ -629,11 +669,18 @@ int push_luavalue(const Banner& banner) {
 }
 
 int push_luavalue(const StoreData& storeData) {
-    g_lua.createTable(0, 7);
+    g_lua.createTable(0, 8);
     g_lua.pushString(storeData.categoryName);
     g_lua.setField("categoryName");
     g_lua.pushInteger(storeData.redirectId);
     g_lua.setField("redirectId");
+
+    g_lua.createTable(0, storeData.menuFilter.size());
+    for (size_t i = 0; i < storeData.menuFilter.size(); ++i) {
+        g_lua.pushString(storeData.menuFilter[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("menuFilter");
 
     g_lua.createTable(0, storeData.disableReasons.size());
     for (size_t i = 0; i < storeData.disableReasons.size(); ++i) {
@@ -770,7 +817,7 @@ int push_luavalue(const BestiaryMonsterData& data) {
 }
 
 int push_luavalue(const CharmData& charm) {
-    g_lua.createTable(0, 7);
+    g_lua.createTable(0, 10);
     g_lua.pushInteger(charm.id);
     g_lua.setField("id");
     g_lua.pushString(charm.name);
@@ -787,6 +834,13 @@ int push_luavalue(const CharmData& charm) {
     g_lua.setField("raceId");
     g_lua.pushInteger(charm.removeRuneCost);
     g_lua.setField("removeRuneCost");
+    //if (g_game.getClientVersion() >= 1410) {
+    g_lua.pushInteger(charm.availableCharmSlots);
+    g_lua.setField("availableCharmSlots");
+    g_lua.pushInteger(charm.tier);
+    g_lua.setField("tier");
+    // }
+
     return 1;
 }
 
@@ -1155,5 +1209,433 @@ int push_luavalue(const RaceType& raceData)
     g_lua.setField("outfit");
     g_lua.pushBoolean(raceData.boss);
     g_lua.setField("boss");
+    return 1;
+}
+
+int push_luavalue(const DailyRewardItem& item) {
+    g_lua.createTable(0, 3);
+    g_lua.pushInteger(item.itemId);
+    g_lua.setField("itemId");
+    g_lua.pushString(item.name);
+    g_lua.setField("name");
+    g_lua.pushInteger(item.weight);
+    g_lua.setField("weight");
+    return 1;
+}
+
+int push_luavalue(const DailyRewardBundle& bundle) {
+    g_lua.createTable(0, 4);
+    g_lua.pushInteger(bundle.bundleType);
+    g_lua.setField("bundleType");
+    g_lua.pushInteger(bundle.itemId);
+    g_lua.setField("itemId");
+    g_lua.pushString(bundle.name);
+    g_lua.setField("name");
+    g_lua.pushInteger(bundle.count);
+    g_lua.setField("count");
+    return 1;
+}
+
+int push_luavalue(const DailyRewardDay& day) {
+    g_lua.createTable(0, 4);
+    g_lua.pushInteger(day.redeemMode);
+    g_lua.setField("redeemMode");
+    g_lua.pushInteger(day.itemsToSelect);
+    g_lua.setField("itemsToSelect");
+    g_lua.createTable(day.selectableItems.size(), 0);
+    for (size_t i = 0; i < day.selectableItems.size(); ++i) {
+        push_luavalue(day.selectableItems[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("selectableItems");
+
+    g_lua.createTable(day.bundleItems.size(), 0);
+    for (size_t i = 0; i < day.bundleItems.size(); ++i) {
+        push_luavalue(day.bundleItems[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("bundleItems");
+
+    return 1;
+}
+
+int push_luavalue(const DailyRewardData& data) {
+    g_lua.createTable(0, 5);
+    g_lua.pushInteger(data.days);
+    g_lua.setField("days");
+
+    g_lua.createTable(data.freeRewards.size(), 0);
+    for (size_t i = 0; i < data.freeRewards.size(); ++i) {
+        push_luavalue(data.freeRewards[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("freeRewards");
+
+    g_lua.createTable(data.premiumRewards.size(), 0);
+    for (size_t i = 0; i < data.premiumRewards.size(); ++i) {
+        push_luavalue(data.premiumRewards[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("premiumRewards");
+
+    g_lua.createTable(data.bonuses.size(), 0);
+    for (size_t i = 0; i < data.bonuses.size(); ++i) {
+        g_lua.createTable(0, 2);
+        g_lua.pushString(data.bonuses[i].name);
+        g_lua.setField("name");
+        g_lua.pushInteger(data.bonuses[i].id);
+        g_lua.setField("id");
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("bonuses");
+
+    g_lua.pushInteger(data.maxUnlockableDragons);
+    g_lua.setField("maxUnlockableDragons");
+
+    return 1;
+}
+
+int push_luavalue(const CyclopediaCharacterOffenceStats& data)
+{
+    g_lua.createTable(0, 30);
+
+    g_lua.pushNumber(data.critChanceTotal);
+    g_lua.setField("critChance");
+
+    g_lua.pushNumber(data.critDamageTotal);
+    g_lua.setField("critDamage");
+
+    g_lua.pushNumber(data.critDamageEquipament);
+    g_lua.setField("critDamageBase");
+
+    g_lua.pushNumber(data.critDamageImbuement);
+    g_lua.setField("critDamageImbuement");
+
+    g_lua.pushNumber(data.critDamageWheel);
+    g_lua.setField("critDamageWheel");
+
+    g_lua.pushNumber(data.lifeLeechTotal);
+    g_lua.setField("lifeLeech");
+
+    g_lua.pushNumber(data.lifeLeechEquipament);
+    g_lua.setField("lifeLeechBase");
+
+    g_lua.pushNumber(data.lifeLeechImbuement);
+    g_lua.setField("lifeLeechImbuement");
+
+    g_lua.pushNumber(data.lifeLeechWheel);
+    g_lua.setField("lifeLeechWheel");
+
+    g_lua.pushNumber(data.manaLeechTotal);
+    g_lua.setField("manaLeech");
+
+    g_lua.pushNumber(data.manaLeechEquipament);
+    g_lua.setField("manaLeechBase");
+
+    g_lua.pushNumber(data.manaLeechImbuement);
+    g_lua.setField("manaLeechImbuement");
+
+    g_lua.pushNumber(data.manaLeechWheel);
+    g_lua.setField("manaLeechWheel");
+
+    g_lua.pushNumber(data.onslaught);
+    g_lua.setField("onslaught");
+
+    g_lua.pushNumber(data.onslaughtBase);
+    g_lua.setField("onslaughtBase");
+
+    g_lua.pushNumber(data.onslaughtBonus);
+    g_lua.setField("onslaughtBonus");
+
+    g_lua.pushNumber(data.cleavePercent);
+    g_lua.setField("cleavePercent");
+
+    g_lua.createTable(data.perfectShotDamage.size(), 0);
+    for (size_t i = 0; i < data.perfectShotDamage.size(); ++i) {
+        g_lua.pushInteger(data.perfectShotDamage[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("perfectShotDamage");
+
+    g_lua.pushInteger(data.flatDamage);
+    g_lua.setField("flatDamage");
+
+    g_lua.pushInteger(data.flatDamageBase);
+    g_lua.setField("flatDamageBase");
+
+    g_lua.pushInteger(data.weaponAttack);
+    g_lua.setField("weaponAttack");
+
+    g_lua.pushInteger(data.weaponFlatModifier);
+    g_lua.setField("weaponFlatModifier");
+
+    g_lua.pushInteger(data.weaponDamage);
+    g_lua.setField("weaponDamage");
+
+    g_lua.pushInteger(data.weaponSkillType);
+    g_lua.setField("weaponSkillType");
+
+    g_lua.pushInteger(data.weaponSkillLevel);
+    g_lua.setField("weaponSkillLevel");
+
+    g_lua.pushInteger(data.weaponSkillModifier);
+    g_lua.setField("weaponSkillModifier");
+
+    g_lua.pushInteger(data.weaponElement);
+    g_lua.setField("weaponElement");
+
+    g_lua.pushNumber(data.weaponElementDamage);
+    g_lua.setField("weaponElementDamage");
+
+    g_lua.pushInteger(data.weaponElementType);
+    g_lua.setField("weaponElementType");
+
+    g_lua.createTable(data.weaponAccuracy.size(), 0);
+    for (size_t i = 0; i < data.weaponAccuracy.size(); ++i) {
+        g_lua.pushNumber(data.weaponAccuracy[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("weaponAccuracy");
+
+    return 1;
+}
+
+int push_luavalue(const CyclopediaCharacterDefenceStats& data)
+{
+    g_lua.createTable(0, 20);
+
+    g_lua.pushNumber(data.dodgeTotal);
+    g_lua.setField("dodgeTotal");
+
+    g_lua.pushNumber(data.dodgeBase);
+    g_lua.setField("dodgeBase");
+
+    g_lua.pushNumber(data.dodgeBonus);
+    g_lua.setField("dodgeBonus");
+
+    g_lua.pushNumber(data.dodgeWheel);
+    g_lua.setField("dodgeWheel");
+
+    g_lua.pushInteger(data.magicShieldCapacity);
+    g_lua.setField("magicShieldCapacity");
+
+    g_lua.pushInteger(data.magicShieldCapacityFlat);
+    g_lua.setField("magicShieldCapacityFlat");
+
+    g_lua.pushNumber(data.magicShieldCapacityPercent);
+    g_lua.setField("magicShieldCapacityPercent");
+
+    g_lua.pushInteger(data.reflectPhysical);
+    g_lua.setField("reflectPhysical");
+
+    g_lua.pushInteger(data.armor);
+    g_lua.setField("armor");
+
+    g_lua.pushInteger(data.defense);
+    g_lua.setField("defense");
+
+    g_lua.pushInteger(data.defenseEquipment);
+    g_lua.setField("defenseEquipment");
+
+    g_lua.pushInteger(data.defenseSkillType);
+    g_lua.setField("defenseSkillType");
+
+    g_lua.pushInteger(data.shieldingSkill);
+    g_lua.setField("shieldingSkill");
+
+    g_lua.pushInteger(data.defenseWheel);
+    g_lua.setField("defenseWheel");
+
+    g_lua.pushNumber(data.mitigation);
+    g_lua.setField("mitigation");
+
+    g_lua.pushNumber(data.mitigationBase);
+    g_lua.setField("mitigationBase");
+
+    g_lua.pushNumber(data.mitigationEquipment);
+    g_lua.setField("mitigationEquipment");
+
+    g_lua.pushNumber(data.mitigationShield);
+    g_lua.setField("mitigationShield");
+
+    g_lua.pushNumber(data.mitigationWheel);
+    g_lua.setField("mitigationWheel");
+
+    g_lua.pushNumber(data.mitigationCombatTactics);
+    g_lua.setField("mitigationCombatTactics");
+
+    g_lua.createTable(data.resistances.size(), 0);
+    for (size_t i = 0; i < data.resistances.size(); ++i) {
+        g_lua.createTable(0, 2);
+        g_lua.pushInteger(data.resistances[i].element);
+        g_lua.setField("element");
+        g_lua.pushNumber(data.resistances[i].value);
+        g_lua.setField("value");
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("resistances");
+
+    return 1;
+}
+
+int push_luavalue(const CyclopediaCharacterMiscStats& data)
+{
+    g_lua.createTable(0, 14);
+
+    g_lua.pushNumber(data.momentumTotal);
+    g_lua.setField("momentumTotal");
+
+    g_lua.pushNumber(data.momentumBase);
+    g_lua.setField("momentumBase");
+
+    g_lua.pushNumber(data.momentumBonus);
+    g_lua.setField("momentumBonus");
+
+    g_lua.pushNumber(data.momentumWheel);
+    g_lua.setField("momentumWheel");
+
+    g_lua.pushNumber(data.dodgeTotal);
+    g_lua.setField("dodgeTotal");
+
+    g_lua.pushNumber(data.dodgeBase);
+    g_lua.setField("dodgeBase");
+
+    g_lua.pushNumber(data.dodgeBonus);
+    g_lua.setField("dodgeBonus");
+
+    g_lua.pushNumber(data.dodgeWheel);
+    g_lua.setField("dodgeWheel");
+
+    g_lua.pushNumber(data.damageReflectionTotal);
+    g_lua.setField("damageReflectionTotal");
+
+    g_lua.pushNumber(data.damageReflectionBase);
+    g_lua.setField("damageReflectionBase");
+
+    g_lua.pushNumber(data.damageReflectionBonus);
+    g_lua.setField("damageReflectionBonus");
+
+    g_lua.pushInteger(data.haveBlesses);
+    g_lua.setField("haveBlesses");
+
+    g_lua.pushInteger(data.totalBlesses);
+    g_lua.setField("totalBlesses");
+
+    g_lua.createTable(data.concoctions.size(), 0);
+    for (size_t i = 0; i < data.concoctions.size(); ++i) {
+        g_lua.createTable(0, 2);
+        g_lua.pushInteger(data.concoctions[i].id);
+        g_lua.setField("id");
+        g_lua.pushInteger(data.concoctions[i].duration);
+        g_lua.setField("duration");
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("concoctions");
+
+    return 1;
+}
+
+int push_luavalue(const ForgeItemInfo& item) {
+    g_lua.createTable(0, 3);
+    g_lua.pushInteger(item.id);
+    g_lua.setField("id");
+    g_lua.pushInteger(item.tier);
+    g_lua.setField("tier");
+    g_lua.pushInteger(item.count);
+    g_lua.setField("count");
+    return 1;
+}
+
+int push_luavalue(const ForgeTransferData& data) {
+    g_lua.createTable(0, 2);
+    g_lua.createTable(data.donors.size(), 0);
+    for (size_t i = 0; i < data.donors.size(); ++i) {
+        push_luavalue(data.donors[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("donors");
+
+    g_lua.createTable(data.receivers.size(), 0);
+    for (size_t i = 0; i < data.receivers.size(); ++i) {
+        push_luavalue(data.receivers[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("receivers");
+    return 1;
+}
+
+int push_luavalue(const ForgeOpenData& data) {
+    g_lua.createTable(0, 5);
+
+    g_lua.createTable(data.fusionItems.size(), 0);
+    for (size_t i = 0; i < data.fusionItems.size(); ++i) {
+        push_luavalue(data.fusionItems[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("fusionItems");
+
+    g_lua.createTable(data.convergenceFusion.size(), 0);
+    for (size_t i = 0; i < data.convergenceFusion.size(); ++i) {
+        g_lua.createTable(data.convergenceFusion[i].size(), 0);
+        for (size_t j = 0; j < data.convergenceFusion[i].size(); ++j) {
+            push_luavalue(data.convergenceFusion[i][j]);
+            g_lua.rawSeti(j + 1);
+        }
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("convergenceFusion");
+
+    g_lua.createTable(data.transfers.size(), 0);
+    for (size_t i = 0; i < data.transfers.size(); ++i) {
+        push_luavalue(data.transfers[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("transfers");
+
+    g_lua.createTable(data.convergenceTransfers.size(), 0);
+    for (size_t i = 0; i < data.convergenceTransfers.size(); ++i) {
+        push_luavalue(data.convergenceTransfers[i]);
+        g_lua.rawSeti(i + 1);
+    }
+    g_lua.setField("convergenceTransfers");
+
+    g_lua.pushInteger(data.dustLevel);
+    g_lua.setField("dustLevel");
+    return 1;
+}
+
+// Custom structs implementations
+int push_luavalue(const BossCooldownData& data) {
+    g_lua.createTable(0, 2);
+    g_lua.pushInteger(data.bossRaceId);
+    g_lua.setField("bossRaceId");
+    g_lua.pushInteger(data.cooldownTime);
+    g_lua.setField("cooldownTime");
+    return 1;
+}
+
+int push_luavalue(const PartyMemberData& data) {
+    g_lua.createTable(0, 6);
+    g_lua.pushInteger(data.memberID);
+    g_lua.setField("memberID");
+    g_lua.pushInteger(data.highlight);
+    g_lua.setField("highlight");
+    g_lua.pushInteger(data.loot);
+    g_lua.setField("loot");
+    g_lua.pushInteger(data.supply);
+    g_lua.setField("supply");
+    g_lua.pushInteger(data.damage);
+    g_lua.setField("damage");
+    g_lua.pushInteger(data.healing);
+    g_lua.setField("healing");
+    return 1;
+}
+
+int push_luavalue(const PartyMemberName& data) {
+    g_lua.createTable(0, 2);
+    g_lua.pushInteger(data.memberID);
+    g_lua.setField("memberID");
+    g_lua.pushString(data.memberName);
+    g_lua.setField("memberName");
     return 1;
 }

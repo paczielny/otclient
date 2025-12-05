@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,8 +23,6 @@
 #pragma once
 
 #include "platformwindow.h"
-
-#include <windows.h>
 
 #ifdef OPENGL_ES
 #include <EGL/egl.h>
@@ -73,6 +71,7 @@ public:
     void setVerticalSync(bool enable) override;
     void setIcon(const std::string& file) override;
     void setClipboardText(std::string_view text) override;
+    void setTitleBarColor(const Color& color) override;
 
     Size getDisplaySize() override;
     std::string getClipboardText() override;

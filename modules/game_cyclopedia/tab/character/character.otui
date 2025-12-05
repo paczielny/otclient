@@ -709,16 +709,37 @@ UIWidget
       anchors.top: reduction.bottom
       anchors.left: reduction.left
       anchors.right: separator.right
-
-      color: #f00303
-      background-color: #355d89
-      shader: Map - Party
       margin-left: 10
       margin-top: 10
       size: 232 233
       layout:
         type: verticalBox
         fit-children: true
+    HorizontalSeparator
+      anchors.top: prev.bottom
+      anchors.left: reduction.left
+      anchors.right: separator.right
+      margin-right: 10
+
+    CharacterSkillBase
+      id: concoction
+      anchors.top: prev.bottom
+      anchors.left: parent.left
+      anchors.right: separator.right
+      margin-top: 1
+      SkillNameLabel
+        !text: tr('Concoctions:')
+        color: #C0C0C0  
+    CharacterSkillBase
+      id: concoctionPanel
+      anchors.top: prev.bottom
+      anchors.left: parent.left
+      anchors.right: separator.right
+
+      layout:
+        type: grid
+        cell-size: 32 32
+        flow: true
 
     CharacterSkillBase
       id: criticalHit
@@ -799,7 +820,7 @@ UIWidget
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        image-source: /images/game/actionbar/1pixel-down-frame
+        image-source: /images/ui/1pixel_down_frame
         image-border: 5
         UIWidget
           anchors.fill: parent
@@ -895,7 +916,7 @@ UIWidget
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        image-source: /images/game/actionbar/1pixel-down-frame
+        image-source: /images/ui/1pixel_down_frame
         image-border: 5
         UIWidget
           anchors.fill: parent
@@ -1071,7 +1092,7 @@ UIWidget
     UIWidget
       id: filters
       width: 114
-      image-source: /images/game/actionbar/1pixel-down-frame
+      image-source: /images/ui/1pixel_down_frame
       image-border: 5
       anchors.top: achievements.top
       anchors.bottom: ListBase.top
@@ -1126,7 +1147,7 @@ UIWidget
     UIWidget
       id: regular
       height: 20
-      image-source: /images/game/actionbar/1pixel-down-frame
+      image-source: /images/ui/1pixel_down_frame
       image-border: 5
       anchors.top: sort.bottom
       anchors.left: sort.left
@@ -1151,7 +1172,7 @@ UIWidget
     UIWidget
       id: secret
       height: 20
-      image-source: /images/game/actionbar/1pixel-down-frame
+      image-source: /images/ui/1pixel_down_frame
       image-border: 5
       anchors.top: regular.bottom
       anchors.left: regular.left
@@ -1241,7 +1262,7 @@ UIWidget
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        image-source: /images/game/actionbar/1pixel-down-frame
+        image-source: /images/ui/1pixel_down_frame
         image-border: 5
         UIWidget
           anchors.fill: parent
@@ -1298,7 +1319,7 @@ UIWidget
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      image-source: /images/game/actionbar/2pixel-up-frame-borderimage
+      image-source: /images/ui/2pixel_up_frame_borderimage
       image-border: 5
       CheckBox
         id: inventory
@@ -1369,7 +1390,7 @@ UIWidget
       anchors.top: filters.bottom
       anchors.left: parent.left
       anchors.right: filters.right
-      image-source: /images/game/actionbar/2pixel-up-frame-borderimage
+      image-source: /images/ui/2pixel_up_frame_borderimage
       image-border: 5
       margin-top: 5
       RoundCheckBox
@@ -1406,7 +1427,7 @@ UIWidget
       anchors.top: parent.top
       anchors.left: parent.left
       anchors.right: parent.right
-      image-source: /images/game/actionbar/2pixel-up-frame-borderimage
+      image-source: /images/ui/2pixel_up_frame_borderimage
       image-border: 5
       RoundCheckBox
         id: outfits
@@ -1771,3 +1792,125 @@ UIWidget
 
         step: 80
         pixel-scroll: true
+
+  BorderBox
+    id: OffenceStats
+    anchors.top: CharacterBase.top
+    anchors.left: CharacterBase.right
+    anchors.bottom: OptionsBase.bottom
+    anchors.right: parent.right
+    margin-left: 10
+    visible: false
+
+    VerticalSeparator
+      id: separator
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
+      margin-top: 5
+      margin-bottom: 5
+
+
+    Panel
+      id: leftPanel
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: separator.right
+      margin-top: 5
+      margin-left: 5
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2
+
+    Panel
+      id: rightPanel
+      anchors.top: prev.top
+      anchors.left: separator.left
+      anchors.right: parent.right
+      margin-top: 1
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2
+
+
+  BorderBox
+    id: DeffenceStats
+    anchors.top: CharacterBase.top
+    anchors.left: CharacterBase.right
+    anchors.bottom: OptionsBase.bottom
+    anchors.right: parent.right
+    margin-left: 10
+    visible: false
+    VerticalSeparator
+      id: separator
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
+      margin-top: 5
+      margin-bottom: 5
+
+
+    Panel
+      id: leftPanel
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: separator.right
+      margin-top: 5
+      margin-left: 5
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2
+
+    Panel
+      id: rightPanel
+      anchors.top: prev.top
+      anchors.left: separator.left
+      anchors.right: parent.right
+      margin-top: 1
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2
+
+  BorderBox
+    id: MiscStats
+    anchors.top: CharacterBase.top
+    anchors.left: CharacterBase.right
+    anchors.bottom: OptionsBase.bottom
+    anchors.right: parent.right
+    margin-left: 10
+    visible: false
+    VerticalSeparator
+      id: separator
+      anchors.horizontalCenter: parent.horizontalCenter
+      anchors.top: parent.top
+      anchors.bottom: parent.bottom
+      margin-top: 5
+      margin-bottom: 5
+
+
+    Panel
+      id: leftPanel
+      anchors.top: parent.top
+      anchors.left: parent.left
+      anchors.right: separator.right
+      margin-top: 5
+      margin-left: 5
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2
+
+    Panel
+      id: rightPanel
+      anchors.top: prev.top
+      anchors.left: separator.left
+      anchors.right: parent.right
+      margin-top: 1
+      height: 350
+      layout:
+        type: verticalBox
+        spacing: 2

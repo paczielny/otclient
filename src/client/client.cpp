@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,18 +21,23 @@
  */
 
 #include "client.h"
+
 #include "game.h"
 #include "gameconfig.h"
 #include "map.h"
+#include "mapview.h"
 #include "minimap.h"
 #include "spriteappearances.h"
 #include "spritemanager.h"
+#include "thingtypemanager.h"
 #include "uimap.h"
-
-#include <framework/core/asyncdispatcher.h>
-#include <framework/core/eventdispatcher.h>
-#include <framework/graphics/shadermanager.h>
-#include <framework/ui/ui.h>
+#include "framework/core/eventdispatcher.h"
+#include "framework/graphics/drawpoolmanager.h"
+#include "framework/graphics/shadermanager.h"
+#include "framework/ui/uimanager.h"
+#ifdef FRAMEWORK_EDITOR
+#include "creatures.h"
+#endif
 
 Client g_client;
 
@@ -70,26 +75,41 @@ void Client::terminate()
 
 void Client::preLoad() {
     if (m_mapWidget) {
-        m_mapWidget->updateMapRect();
-        m_mapWidget->getMapView()->preLoad();
+        if (m_mapWidget->isDestroyed())
+            m_mapWidget = nullptr;
+        else {
+            m_mapWidget->updateMapRect();
+            m_mapWidget->getMapView()->preLoad();
+        }
     }
 }
 
 void Client::draw(const DrawPoolType type)
 {
+    if (type == DrawPoolType::FOREGROUND) {
+        g_ui.render(DrawPoolType::FOREGROUND);
+        if (!g_game.isOnline())
+            m_mapWidget = nullptr;
+        return;
+    }
+
     if (!g_game.isOnline()) {
         m_mapWidget = nullptr;
         return;
     }
 
+    if (m_mapWidget && m_mapWidget->isDestroyed())
+        m_mapWidget = nullptr;
     if (type == DrawPoolType::MAP && !m_mapWidget)
         m_mapWidget = g_ui.getRootWidget()->recursiveGetChildById("gameMapPanel")->static_self_cast<UIMap>();
 
     if (!m_mapWidget)
         return;
 
-    if (type == DrawPoolType::FOREGROUND_MAP)
+    if (type == DrawPoolType::FOREGROUND_MAP) {
         g_textDispatcher.poll();
+        m_mapWidget->draw(DrawPoolType::CREATURE_INFORMATION);
+    }
 
     m_mapWidget->draw(type);
 }
@@ -97,13 +117,15 @@ void Client::draw(const DrawPoolType type)
 bool Client::canDraw(const DrawPoolType type) const
 {
     switch (type) {
-        case DrawPoolType::FOREGROUND:
-            return true;
-
         case DrawPoolType::MAP:
+            return g_game.isOnline();
+
+        case DrawPoolType::FOREGROUND:
+            return g_drawPool.get(type)->canRepaint();
+
         case DrawPoolType::CREATURE_INFORMATION:
         case DrawPoolType::FOREGROUND_MAP:
-            return g_game.isOnline();
+            return g_game.isOnline() && g_drawPool.get(type)->canRepaint();
 
         case DrawPoolType::LIGHT:
             return g_game.isOnline() && m_mapWidget && m_mapWidget->isDrawingLights();

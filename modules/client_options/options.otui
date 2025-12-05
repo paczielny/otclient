@@ -1,6 +1,6 @@
 OptionsCategory < UIWidget
   size: 115 22
-  image-source: /images/game/actionbar/1pixel-down-frame
+  image-source: /images/ui/1pixel_down_frame
   image-border: 5
   UIWidget
     id: Button
@@ -132,6 +132,16 @@ MainWindow
     image-border-bottom: 2
   @onEnter: modules.client_options.hide()
   @onEscape: modules.client_options.hide()
+  $mobile:
+    size: 500 380
+
+  HorizontalSeparator
+    id: separator
+    anchors.left: parent.left
+    anchors.right: parent.right
+    anchors.bottom: parent.bottom
+    height: 2
+    margin-bottom: 15
 
   Label
     !text: tr('Options')
@@ -148,34 +158,29 @@ MainWindow
     id: optionsTabBar
     anchors.top: parent.top
     anchors.left: parent.left
+    anchors.bottom: separator.bottom
     margin-left: 1
     margin-top: -10
+    margin-bottom: 10
     image-border: 3
     image-source: /images/ui/2pixel_up_frame_borderimage_dark
-    size: 128 453
+    size: 128 423
 
   QtPanel
     id: optionsTabContent
     anchors.top: optionsTabBar.top
     anchors.left: optionsTabBar.right
     anchors.right: parent.right
-    anchors.bottom: optionsTabBar.bottom
+    anchors.bottom: separator.bottom
     margin-left: 10
-
-
-  HorizontalSeparator
-    anchors.left: optionsTabBar.left
-    anchors.right: optionsTabContent.right
-    anchors.top: optionsTabContent.bottom
-    image-source: /images/ui/horizontal_line_bright
-    height: 1
-    margin-top: 15
+    margin-bottom: 10
 
   QtButton
     !text: tr('Ok')
     size: 64 20
     anchors.right: parent.right
-    anchors.top: prev.bottom
-    margin-top: 10
-    margin-right: 10
-    @onClick: modules.client_options.hide()
+    anchors.bottom: parent.bottom
+    margin-bottom: -8
+    @onClick: |
+      modules.client_options.saveOptions()
+      modules.client_options.hide()

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,21 +22,14 @@
 
 #pragma once
 
-#include "gameconfig.h"
 #include <framework/core/declarations.h>
-#include <framework/core/filestream.h>
 #include <framework/graphics/declarations.h>
 
 class FileMetadata
 {
 public:
     FileMetadata() = default;
-    FileMetadata(const FileStreamPtr& file) {
-        offset = file->getU32();
-        fileSize = file->getU32();
-        fileName = file->getString();
-        spriteId = std::stoi(fileName);
-    }
+    FileMetadata(const FileStreamPtr& file);
 
     uint32_t getSpriteId() const { return spriteId; }
     const std::string& getFileName() const { return fileName; }
@@ -69,16 +62,29 @@ public:
     uint32_t getSignature() { return m_signature; }
     int getSpritesCount() { return m_spritesCount; }
 
-    ImagePtr getSpriteImage(int id);
+    ImagePtr getSpriteImage(int id) {
+        bool isLoading = false;
+        return  getSpriteImage(id, isLoading);
+    }
+
+    ImagePtr getSpriteImage(int id, bool& isLoading);
     bool isLoaded() { return m_loaded; }
 
 private:
-     struct FileStream_m {
-         FileStreamPtr file;
-         std::mutex mutex;
+    enum class SpriteLoadState
+    {
+        NONE,
+        LOADING,
+        LOADED
+    };
 
-         FileStream_m(FileStreamPtr f) : file(std::move(f)) {}
-     };
+    struct FileStream_m
+    {
+        FileStreamPtr file;
+        std::atomic<SpriteLoadState> m_loadingState = SpriteLoadState::NONE;
+
+        FileStream_m(FileStreamPtr f) : file(std::move(f)) {}
+    };
 
     void load();
     FileStreamPtr getSpriteFile() const {

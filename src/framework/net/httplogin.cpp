@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,9 @@
  */
 
 #include "httplogin.h"
-
 #include <framework/core/asyncdispatcher.h>
 #include <framework/core/eventdispatcher.h>
-#include <httplib.h>
-#include <iostream>
 #include <nlohmann/json.hpp>
-#include <string>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/fetch.h>
@@ -40,6 +36,11 @@ LoginHttp::LoginHttp() {
     this->worlds.clear();
     this->session.clear();
     this->errorMessage.clear();
+    this->cancelled.store(false);
+}
+
+void LoginHttp::cancel() {
+    cancelled.store(true);
 }
 
 void LoginHttp::Logger(const auto& req, const auto& res) {
@@ -103,14 +104,18 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
 #ifndef __EMSCRIPTEN__
     g_asyncDispatcher.detach_task(
         [this, host, path, port, email, password, request_id, httpLogin] {
+        if (cancelled.load()) return;
         httplib::Result result =
             this->loginHttpsJson(host, path, port, email, password);
         if (httpLogin && (!result || result->status != Success)) {
+            if (cancelled.load()) return;
             result = loginHttpJson(host, path, port, email, password);
         }
 
+        if (cancelled.load()) return;
         if (result && result->status == Success) {
             g_dispatcher.addEvent([this, request_id] {
+                if (cancelled.load()) return;
                 g_lua.callGlobalField("EnterGame", "loginSuccess", request_id,
                 this->getSession(), this->getWorldList(),
                 this->getCharacterList());
@@ -136,6 +141,7 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
             }
 
             g_dispatcher.addEvent([this, request_id, status, msg] {
+                if (cancelled.load()) return;
                 g_lua.callGlobalField("EnterGame", "loginFailed", request_id, msg,
                 status);
             });
@@ -144,6 +150,7 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
 #else
     g_asyncDispatcher.detach_task(
         [this, host, path, port, email, password, request_id, httpLogin] {
+        if (cancelled.load()) return;
         emscripten_fetch_attr_t attr;
         emscripten_fetch_attr_init(&attr);
         strcpy(attr.requestMethod, "POST");
@@ -166,14 +173,20 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
             fetch = emscripten_fetch(&attr, url.c_str());
         }
 
+        if (cancelled.load()) {
+            emscripten_fetch_close(fetch);
+            return;
+        }
         if (fetch && fetch->status == 200 &&
                !parseJsonResponse(std::string(fetch->data, fetch->numBytes))) {
             fetch->status = -1;
         }
 
         emscripten_fetch_close(fetch);
+        if (cancelled.load()) return;
         if (fetch && fetch->status == 200) {
             g_dispatcher.addEvent([this, request_id] {
+                if (cancelled.load()) return;
                 g_lua.callGlobalField("EnterGame", "loginSuccess", request_id,
                 this->getSession(), this->getWorldList(),
                 this->getCharacterList());
@@ -193,6 +206,7 @@ void LoginHttp::httpLogin(const std::string& host, const std::string& path,
             }
 
             g_dispatcher.addEvent([this, request_id, status, msg] {
+                if (cancelled.load()) return;
                 g_lua.callGlobalField("EnterGame", "loginFailed", request_id, msg,
                 status);
             });
@@ -210,6 +224,10 @@ httplib::Result LoginHttp::loginHttpsJson(const std::string& host,
 
     client.set_logger(
         [this](const auto& req, const auto& res) { LoginHttp::Logger(req, res); });
+
+    client.set_ca_cert_path("./cacert.pem");
+    client.enable_server_certificate_verification(false);
+    client.enable_server_hostname_verification(false);
 
     const json body = { {"email", email}, {"password", password}, {"stayloggedin", true}, {"type", "login"} };
     const httplib::Headers headers = { {"User-Agent", "Mozilla/5.0"} };
@@ -266,14 +284,17 @@ httplib::Result LoginHttp::loginHttpJson(const std::string& host,
 }
 
 bool LoginHttp::parseJsonResponse(const std::string& body) {
+    if (cancelled.load()) return false;
     json responseJson;
     try {
+        if (cancelled.load()) return false;
         responseJson = json::parse(body);
     } catch (...) {
         g_logger.info("Failed to parse json response");
         return false;
     }
 
+    if (cancelled.load()) return false;
     if (responseJson.contains("errorMessage")) {
         this->errorMessage = to_string(responseJson.at("errorMessage"));
         return false;

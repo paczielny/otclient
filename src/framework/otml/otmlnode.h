@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,7 +33,7 @@ public:
     static OTMLNodePtr create(std::string_view tag, std::string_view value);
 
     std::string tag() { return m_tag; }
-    int size() const { return m_children.size(); }
+    size_t size() const { return m_children.size(); }
     std::string source() { return m_source; }
     std::string rawValue() { return m_value; }
 
@@ -121,7 +121,7 @@ T OTMLNode::value()
 {
     T ret;
     if (!stdext::cast(m_value, ret))
-        throw OTMLException(asOTMLNode(), stdext::format("failed to cast node value '%s' to type '%s'", m_value, stdext::demangle_type<T>()));
+        throw OTMLException(asOTMLNode(), fmt::format("failed to cast node value '{}' to type '{}'", m_value, stdext::demangle_type<T>()));
     return ret;
 }
 

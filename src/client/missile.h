@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +25,16 @@
 #include "thing.h"
 #include <framework/core/timer.h>
 
-// @bindclass
+ // @bindclass
 class Missile final : public Thing
 {
 public:
-    Missile() { m_drawConductor = { .agroup = true, .order = FIFTH }; };
-    void draw(const Point& dest, bool drawThings = true, const LightViewPtr& lightView = nullptr) override;
+    void draw(const Point& dest, bool drawThings = true, LightView* lightView = nullptr) override;
 
     void setId(uint32_t id) override;
     void setPath(const Position& fromPosition, const Position& toPosition);
 
-    bool isMissile() override { return true; }
+    bool isMissile() const override { return true; }
 
     MissilePtr asMissile() { return static_self_cast<Missile>(); }
 

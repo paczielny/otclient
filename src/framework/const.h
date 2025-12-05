@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,9 +21,6 @@
  */
 
 #pragma once
-
-#include <cstdint>
-#include <numbers>
 
 #define DEG_TO_RAD (std::acos(-1.f)/180.f)
 #define RAD_TO_DEC (180.f/std::acos(-1.f))
@@ -174,6 +171,13 @@ namespace Fw
         KeyNumpad8 = 149,
         KeyNumpad9 = 150,
         KeyLast
+    };
+
+    enum TextureAtlasType
+    {
+        MAP = 0,
+        FOREGROUND,
+        LAST
     };
 
     enum LogLevel : uint8_t

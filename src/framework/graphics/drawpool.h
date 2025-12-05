@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,12 @@
 
 #pragma once
 
-#include <utility>
-
 #include "declarations.h"
 #include "framebuffer.h"
 #include "framework/core/timer.h"
-#include <framework/core/graphicalapplication.h>
-#include <framework/platform/platformwindow.h>
+#include <framework/util/spinlock.h>
 
 #include "../stdext/storage.h"
-#include <unordered_set>
-
-enum class DrawPoolType : uint8_t
-{
-    MAP,
-    CREATURE_INFORMATION,
-    LIGHT,
-    FOREGROUND_MAP,
-    FOREGROUND,
-    LAST
-};
-
-enum DrawOrder : uint8_t
-{
-    FIRST,  // GROUND
-    SECOND, // BORDER
-    THIRD,  // BOTTOM & TOP
-    FOURTH, // TOP ~ TOP
-    FIFTH,  // ABOVE ALL - MISSILE
-    LAST
-};
 
 struct DrawHashController
 {
@@ -95,21 +71,16 @@ private:
     bool m_agroup{ false };
 };
 
-struct DrawConductor
-{
-    bool agroup{ false };
-    uint8_t order{ FIRST };
-};
-
-constexpr DrawConductor DEFAULT_DRAW_CONDUCTOR;
-
 class DrawPool
 {
 public:
     static constexpr uint16_t
+        FPS1 = 1000 / 1,
         FPS10 = 1000 / 10,
         FPS20 = 1000 / 20,
         FPS60 = 1000 / 60;
+
+    ~DrawPool() { m_enabled = false; }
 
     void setEnable(const bool v) { m_enabled = v; }
 
@@ -131,7 +102,7 @@ public:
 
     void setScaleFactor(const float scale) { m_scaleFactor = scale; }
     float getScaleFactor() const { return m_scaleFactor; }
-    bool isScaled() const { return m_scaleFactor != PlatformWindow::DEFAULT_DISPLAY_DENSITY; }
+    bool isScaled() const { return m_scaleFactor != DEFAULT_DISPLAY_DENSITY; }
 
     void setFramebuffer(const Size& size);
     void removeFramebuffer();
@@ -139,22 +110,21 @@ public:
     void onBeforeDraw(std::function<void()>&& f) { m_beforeDraw = std::move(f); }
     void onAfterDraw(std::function<void()>&& f) { m_afterDraw = std::move(f); }
 
-    std::mutex& getMutex() { return m_mutexDraw; }
-
-    bool isDrawing() const {
-        return m_repaint;
-    }
-
     auto& getHashController() {
         return m_hashCtrl;
     }
 
-    void resetBuffer() {
-        for (auto& buffer : m_coordsCache) {
-            buffer.coords.clear();
-            buffer.last = 0;
-        }
+    const auto getAtlas() const {
+        return m_atlas.get();
     }
+
+    bool shouldRepaint() const {
+        return m_shouldRepaint.load(std::memory_order_acquire);
+    }
+
+    void release();
+
+    auto& getThreadLock() { return m_threadLock; }
 
 protected:
 
@@ -186,16 +156,18 @@ protected:
         std::function<void()> action{ nullptr };
         Color color{ Color::white };
         TexturePtr texture;
+        uint32_t textureId{ 0 };
+        uint16_t textureMatrixId{ 0 };
         size_t hash{ 0 };
 
         bool operator==(const PoolState& s2) const { return hash == s2.hash; }
-        void execute() const;
+        void execute(DrawPool* pool) const;
     };
 
     struct DrawObject
     {
         DrawObject(std::function<void()> action) : action(std::move(action)) {}
-        DrawObject(PoolState&& state, const std::shared_ptr<CoordsBuffer>& coords) : coords(coords), state(std::move(state)) {}
+        DrawObject(PoolState&& state, std::shared_ptr<CoordsBuffer>&& coords) : coords(std::move(coords)), state(std::move(state)) {}
         std::function<void()> action{ nullptr };
         std::shared_ptr<CoordsBuffer> coords;
         PoolState state;
@@ -212,8 +184,9 @@ protected:
     };
 
 private:
+
     static DrawPool* create(DrawPoolType type);
-    static void addCoords(CoordsBuffer* buffer, const DrawMethod& method);
+    static void addCoords(CoordsBuffer& buffer, const DrawMethod& method);
 
     enum STATE_TYPE : uint32_t
     {
@@ -224,8 +197,7 @@ private:
         STATE_BLEND_EQUATION = 1 << 4,
     };
 
-    void add(const Color& color, const TexturePtr& texture, DrawMethod&& method, const DrawConductor& conductor = DEFAULT_DRAW_CONDUCTOR,
-             const CoordsBufferPtr& coordsBuffer = nullptr);
+    void add(const Color& color, const TexturePtr& texture, DrawMethod&& method, const CoordsBufferPtr& coordsBuffer = nullptr);
 
     void addAction(const std::function<void()>& action);
     void bindFrameBuffer(const Size& size, const Color& color = Color::white);
@@ -233,20 +205,22 @@ private:
 
     void setFPS(const uint16_t fps) { m_refreshDelay = 1000 / fps; }
 
-    bool updateHash(const DrawMethod& method, const TexturePtr& texture, const Color& color, bool hasCoord);
-    PoolState getState(const TexturePtr& texture, const Color& color);
+    bool updateHash(const DrawMethod& method, const Texture* texture, const Color& color, bool hasCoord);
+    PoolState getState(const TexturePtr& texture, Texture* textureAtlas, const Color& color);
 
     PoolState& getCurrentState() { return m_states[m_lastStateIndex]; }
     const PoolState& getCurrentState() const { return m_states[m_lastStateIndex]; }
 
     float getOpacity() const { return getCurrentState().opacity; }
     Rect getClipRect() { return getCurrentState().clipRect; }
+    auto getDrawOrder() const { return m_currentDrawOrder; }
 
     void setCompositionMode(CompositionMode mode, bool onlyOnce = false);
     void setBlendEquation(BlendEquation equation, bool onlyOnce = false);
     void setClipRect(const Rect& clipRect, bool onlyOnce = false);
     void setOpacity(float opacity, bool onlyOnce = false);
     void setShaderProgram(const PainterShaderProgramPtr& shaderProgram, bool onlyOnce = false, const std::function<void()>& action = nullptr);
+    void setDrawOrder(DrawOrder order) { m_currentDrawOrder = order; }
 
     void resetOpacity() { getCurrentState().opacity = 1.f; }
     void resetClipRect() { getCurrentState().clipRect = {}; }
@@ -254,6 +228,7 @@ private:
     void resetCompositionMode() { getCurrentState().compositionMode = CompositionMode::NORMAL; }
     void resetBlendEquation() { getCurrentState().blendEquation = BlendEquation::ADD; }
     void resetTransformMatrix() { getCurrentState().transformMatrix = DEFAULT_MATRIX3; }
+    void resetDrawOrder() { m_currentDrawOrder = DrawOrder::FIRST; }
 
     void pushTransformMatrix();
     void popTransformMatrix();
@@ -287,32 +262,7 @@ private:
             m_parameters.erase(it);
     }
 
-    void flush()
-    {
-        m_coords.clear();
-        for (auto& objs : m_objects) {
-            m_objectsFlushed.insert(m_objectsFlushed.end(), make_move_iterator(objs.begin()), make_move_iterator(objs.end()));
-            objs.clear();
-        }
-    }
-
-    void release(const bool flush = true) {
-        m_objectsDraw.clear();
-
-        if (flush) {
-            if (!m_objectsFlushed.empty())
-                m_objectsDraw.insert(m_objectsDraw.end(), make_move_iterator(m_objectsFlushed.begin()), make_move_iterator(m_objectsFlushed.end()));
-
-            for (auto& objs : m_objects) {
-                m_objectsDraw.insert(m_objectsDraw.end(), make_move_iterator(objs.begin()), make_move_iterator(objs.end()));
-                objs.clear();
-            }
-        }
-        m_objectsFlushed.clear();
-
-        std::swap(m_coordsCache[0].coords, m_coordsCache[1].coords);
-        m_coordsCache[1].last = m_coordsCache[0].last;
-    }
+    void flush();
 
     void resetOnlyOnceParameters() {
         if (m_onlyOnceStateFlag > 0) { // Only Once State
@@ -358,6 +308,7 @@ private:
     uint_fast8_t m_lastStateIndex{ 0 };
 
     DrawPoolType m_type{ DrawPoolType::LAST };
+    DrawOrder m_currentDrawOrder{ DrawOrder::FIRST };
 
     Timer m_refreshTimer;
 
@@ -368,27 +319,24 @@ private:
 
     std::vector<DrawObject> m_objects[static_cast<uint8_t>(LAST)];
     std::vector<DrawObject> m_objectsFlushed;
-    std::vector<DrawObject> m_objectsDraw;
-
-    struct
-    {
-        std::vector<std::shared_ptr<CoordsBuffer>> coords;
-        uint_fast32_t last{ 0 };
-    } m_coordsCache[2];
+    std::array<std::vector<DrawObject>, 2> m_objectsDraw;
+    std::vector<CoordsBuffer*> m_coordsCache;
 
     stdext::map<size_t, CoordsBuffer*> m_coords;
     stdext::map<std::string_view, std::any> m_parameters;
 
     float m_scaleFactor{ 1.f };
-    float m_scale{ PlatformWindow::DEFAULT_DISPLAY_DENSITY };
+    float m_scale{ DEFAULT_DISPLAY_DENSITY };
 
     FrameBufferPtr m_framebuffer;
 
     std::function<void()> m_beforeDraw;
     std::function<void()> m_afterDraw;
 
-    std::atomic_bool m_repaint{ false };
-    std::mutex m_mutexDraw;
+    SpinLock m_threadLock;
+
+    TextureAtlasPtr m_atlas;
+    std::atomic_bool m_shouldRepaint;
 
     friend class DrawPoolManager;
 };

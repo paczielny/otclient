@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,20 +22,15 @@
 
 #pragma once
 
-#include "mapview.h"
 #include "outfit.h"
 #include "thing.h"
 #include <framework/core/declarations.h>
 #include <framework/core/timer.h>
 #include <framework/graphics/cachedtext.h>
 
-struct PreyMonster
-{
-    std::string name;
-    Outfit outfit;
-};
+#include "staticdata.h"
 
-// @bindclass
+ // @bindclass
 class Creature : public Thing
 {
 public:
@@ -53,9 +48,9 @@ public:
     void onAppear() override;
     void onDisappear() override;
 
-    void draw(const Point& dest, bool drawThings = true, const LightViewPtr& lightView = nullptr) override;
+    void draw(const Point& dest, bool drawThings = true, LightView* lightView = nullptr) override;
     void draw(const Rect& destRect, uint8_t size, bool center = false);
-    void drawLight(const Point& dest, const LightViewPtr& lightView) override;
+    void drawLight(const Point& dest, LightView* lightView) override;
 
     void internalDraw(Point dest, const Color& color = Color::white);
     void drawInformation(const MapPosInfo& mapRect, const Point& dest, int drawFlags);
@@ -64,8 +59,9 @@ public:
     void setMasterId(const uint32_t id) { m_masterId = id; }
     void setName(std::string_view name);
     void setHealthPercent(uint8_t healthPercent);
+    void setManaPercent(uint8_t value) { m_manaPercent = value; }
     void setDirection(Otc::Direction direction);
-    void setOutfit(const Outfit& outfit);
+    void setOutfit(const Outfit& outfit, bool fireEvent = true);
     void setLight(const Light& light) { m_light = light; }
     void setSpeed(uint16_t speed);
     void setBaseSpeed(uint16_t baseSpeed);
@@ -74,6 +70,7 @@ public:
     void setEmblem(uint8_t emblem);
     void setType(uint8_t type);
     void setIcon(uint8_t icon);
+    void setIcons(const std::vector<std::tuple<uint8_t, uint8_t, uint16_t>>& icons);
     void setSkullTexture(const std::string& filename);
     void setShieldTexture(const std::string& filename, bool blink);
     void setEmblemTexture(const std::string& filename);
@@ -82,6 +79,7 @@ public:
     void setPassable(const bool passable) { m_passable = passable; }
     void setMountShader(std::string_view name);
     void setStaticWalking(uint16_t v);
+    void setIconsTexture(const std::string& filename, const Rect& clip, const uint16_t count);
 
     void onStartAttachEffect(const AttachedEffectPtr& effect) override;
     void onDispatcherAttachEffect(const AttachedEffectPtr& effect) override;
@@ -115,6 +113,7 @@ public:
     uint8_t getType() { return m_type; }
     uint8_t getIcon() { return m_icon; }
     uint8_t getHealthPercent() { return m_healthPercent; }
+    uint8_t getManaPercent() { return m_manaPercent; }
 
     uint16_t getSpeed() { return m_speed; }
     uint16_t getBaseSpeed() { return m_baseSpeed; }
@@ -128,7 +127,7 @@ public:
     int getDrawElevation();
 
     Otc::Direction getDirection() { return m_direction; }
-    Outfit getOutfit() { return m_outfit; }
+    const auto& getOutfit() { return m_outfit; }
     const Light& getLight() const override;
     bool hasLight() const override { return Thing::hasLight() || getLight().intensity > 0; }
     bool hasMountShader() const { return m_mountShaderId > 0; }
@@ -149,11 +148,13 @@ public:
     bool isWalking() { return m_walking; }
 
     bool isRemoved() { return m_removed; }
+    bool isRemoved() const { return m_removed; }
+    const Position& getOldPosition() const { return m_oldPosition; }
     bool isInvisible() { return m_outfit.isEffect() && m_outfit.getAuxId() == 13; }
     bool isDead() { return m_healthPercent <= 0; }
     bool isFullHealth() { return m_healthPercent == 100; }
     bool canBeSeen() { return !isInvisible() || isPlayer(); }
-    bool isCreature() override { return true; }
+    bool isCreature() const override { return true; }
     bool isCovered() { return m_isCovered; }
 
     void setCovered(bool covered);
@@ -185,10 +186,30 @@ minHeight,
     void clearText() { setText("", Color::white); }
     bool canShoot(int distance);
 
+    const auto& getIcons() {
+        static std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> vec;
+        return m_icons ? m_icons->iconEntries : vec;
+    }
+
+    bool isCameraFollowing() const {
+        return m_cameraFollowing;
+    }
+
+    void setCameraFollowing(bool v) {
+        m_cameraFollowing = v;
+    }
+
+    void setVocation(uint8_t vocation) { m_vocation = vocation; }
+    uint8_t getVocation() { return m_vocation; }
+
 protected:
-    virtual void updateWalkOffset(uint8_t totalPixelsWalked);
-    virtual void updateWalk(bool isPreWalking = false);
     virtual void terminateWalk();
+    virtual void onWalking() {};
+    void updateWalkOffset(uint8_t totalPixelsWalked);
+    void updateWalk();
+
+    void setOldPositionSilently(const Position& pos) { m_oldPosition = pos; }
+    void setRemovedSilently(const bool removed) { m_removed = removed; }
 
     ThingType* getThingType() const override;
     ThingType* getMountThingType() const;
@@ -202,6 +223,8 @@ protected:
     Otc::Direction m_direction{ Otc::South };
 
     Timer m_walkTimer;
+
+    int16_t m_lastMapDuration = -1;
 
 private:
     void nextWalkUpdate();
@@ -224,9 +247,25 @@ private:
         uint16_t getDuration(const Otc::Direction dir) const { return Position::isDiagonal(dir) ? diagonalDuration : duration; }
     };
 
+    struct IconRenderData
+    {
+        struct AtlasIconGroup
+        {
+            TexturePtr texture;
+            Rect clip;
+            uint16_t count{ 0 };
+        };
+
+        std::vector<AtlasIconGroup> atlasGroups;
+        std::vector<std::tuple<uint8_t, uint8_t, uint16_t>> iconEntries; // (icon, category, count)
+        CachedText numberText;
+    };
+
     UIWidgetPtr m_widgetInformation;
 
     TilePtr m_walkingTile;
+
+    std::unique_ptr<IconRenderData> m_icons;
 
     TexturePtr m_skullTexture;
     TexturePtr m_shieldTexture;
@@ -244,8 +283,8 @@ private:
     CachedText m_name;
     CachedStep m_stepCache;
 
-    Position m_lastStepFromPosition;
     Position m_lastStepToPosition;
+    Position m_lastStepFromPosition;
     Position m_oldPosition;
 
     Timer m_footTimer;
@@ -281,6 +320,7 @@ private:
 
     uint8_t m_type;
     uint8_t m_healthPercent{ 101 };
+    uint8_t m_manaPercent{ 101 };
     uint8_t m_skull{ Otc::SkullNone };
     uint8_t m_icon{ Otc::NpcIconNone };
     uint8_t m_shield{ Otc::ShieldNone };
@@ -305,6 +345,7 @@ private:
     bool m_allowAppearWalk{ false };
     bool m_showTimedSquare{ false };
     bool m_showStaticSquare{ false };
+    bool m_cameraFollowing{ false };
 
     bool m_removed{ true };
     bool m_drawOutfitColor{ true };
@@ -313,18 +354,20 @@ private:
     bool m_isCovered{ false };
 
     StaticTextPtr m_text;
+
+    uint8_t m_vocation{ 0 };
 };
 
 // @bindclass
 class Npc final : public Creature
 {
 public:
-    bool isNpc() override { return true; }
+    bool isNpc() const override { return true; }
 };
 
 // @bindclass
 class Monster final : public Creature
 {
 public:
-    bool isMonster() override { return true; }
+    bool isMonster() const override { return true; }
 };

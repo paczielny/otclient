@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,12 @@
  */
 
 #include "uimissile.h"
+
+#include "gameconfig.h"
+#include "missile.h"
 #include "lightview.h"
+#include "framework/graphics/drawpoolmanager.h"
+#include "framework/otml/otmlnode.h"
 
 UIMissile::UIMissile() { setProp(PropDraggable, true, false); }
 
@@ -61,8 +66,15 @@ void UIMissile::setMissileId(const int id)
             m_missile = std::make_shared<Missile>();
         m_missile->setId(id);
         m_missile->setDirection(Otc::South);
+
+        if (m_missile)
+            m_missile->setShader(m_shaderName);
     }
 }
+
+int UIMissile::getMissileId() { return m_missile ? m_missile->getId() : 0; }
+Otc::Direction UIMissile::getDirection() { return m_missile ? m_missile->getDirection() : Otc::Direction::InvalidDirection; }
+void UIMissile::setDirection(const Otc::Direction dir) { if (m_missile) m_missile->setDirection(dir); }
 
 void UIMissile::setMissile(const MissilePtr& e)
 {
@@ -71,8 +83,6 @@ void UIMissile::setMissile(const MissilePtr& e)
 
 void UIMissile::onStyleApply(const std::string_view styleName, const OTMLNodePtr& styleNode)
 {
-    UIWidget::onStyleApply(styleName, styleNode);
-
     for (const auto& node : styleNode->children()) {
         if (node->tag() == "missile-id")
             setMissileId(node->value<int>());
@@ -85,4 +95,12 @@ void UIMissile::onStyleApply(const std::string_view styleName, const OTMLNodePtr
         else if (node->tag() == "direction")
             setDirection(static_cast<Otc::Direction>(node->value<int>()));
     }
+    UIWidget::onStyleApply(styleName, styleNode);
 }
+
+void UIMissile::setShader(std::string_view name) {
+    m_shaderName = name;
+    if (getMissile()) getMissile()->setShader(name);
+}
+
+bool UIMissile::hasShader() { return getMissile() ? getMissile()->getShader() != nullptr : false; }

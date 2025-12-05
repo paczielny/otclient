@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@
 #pragma once
 
 #include "thing.h"
-#include <framework/global.h>
+#include "framework/core/declarations.h"
 
 enum ItemAttr : uint8_t
 {
@@ -75,8 +75,8 @@ class Item final : public Thing
 public:
     static ItemPtr create(int id);
 
-    void draw(const Point& dest, bool drawThings = true, const LightViewPtr& lightView = nullptr) override;
-    void drawLight(const Point& dest, const LightViewPtr& lightView) override;
+    void draw(const Point& dest, bool drawThings = true, LightView* lightView = nullptr) override;
+    void drawLight(const Point& dest, LightView* lightView) override;
 
     void setId(uint32_t id) override;
 
@@ -84,7 +84,7 @@ public:
     void setCount(const int count) { m_countOrSubType = count; updatePatterns(); }
     void setSubType(const int subType) { m_countOrSubType = subType; updatePatterns(); }
     void setColor(const Color& c) { if (m_color != c) m_color = c; }
-    void setPosition(const Position& position, uint8_t stackPos = 0, bool hasElevation = false) override;
+    void setPosition(const Position& position, uint8_t stackPos = 0) override;
     void setTooltip(const std::string& str) { m_tooltip = str; }
     void setDurationTime(const uint32_t durationTime) { m_durationTime = durationTime; }
     void setCharges(const uint32_t charges) { m_charges = charges; }
@@ -100,11 +100,16 @@ public:
 
     bool isValid() { return getThingType() != nullptr; }
 
+    bool hasWearOut() { return Thing::hasWearOut(); }
+    bool hasClockExpire() { return Thing::hasClockExpire(); }
+    bool hasExpire() { return Thing::hasExpire(); }
+    bool hasExpireStop() { return Thing::hasExpireStop(); }
+
     void setAsync(const bool enable) { m_async = enable; }
 
     ItemPtr clone();
     ItemPtr asItem() { return static_self_cast<Item>(); }
-    bool isItem() override { return true; }
+    bool isItem() const override { return true; }
 
     void updatePatterns();
     int calculateAnimationPhase();
@@ -143,7 +148,7 @@ public:
 
     bool isHouseDoor() { return m_attribs.has(ATTR_HOUSEDOORID); }
     bool isDepot() { return m_attribs.has(ATTR_DEPOT_ID); }
-    bool isContainer() override { return m_attribs.has(ATTR_CONTAINER_ITEMS) || Thing::isContainer(); }
+    bool isContainer() const override { return m_attribs.has(ATTR_CONTAINER_ITEMS) || Thing::isContainer(); }
     bool isDoor() { return m_attribs.has(ATTR_HOUSEDOORID); }
     bool isTeleport() { return m_attribs.has(ATTR_TELE_DEST); }
 
@@ -158,8 +163,7 @@ public:
 private:
     ThingType* getThingType() const override;
 
-    void internalDraw(int animationPhase, const Point& dest, const Color& color, bool drawThings, bool replaceColorShader, const LightViewPtr& lightView = nullptr);
-    void setConductor();
+    void internalDraw(int animationPhase, const Point& dest, const Color& color, bool drawThings, bool replaceColorShader, LightView* lightView = nullptr);
 
     uint16_t m_countOrSubType{ 0 };
     uint32_t m_durationTime{ 0 };

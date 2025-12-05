@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,16 +21,9 @@
  */
 
 #pragma once
-#ifdef __EMSCRIPTEN__
-#include "webconnection.h"
-#else
-#include "connection.h"
-#endif
-#include "declarations.h"
 
+#include "declarations.h"
 #include <framework/luaengine/luaobject.h>
-#include <framework/proxy/proxy.h>
-#include <zlib.h>
 
  // @bindclass
 class Protocol : public LuaObject
@@ -46,9 +39,12 @@ public:
 #endif
     void disconnect();
 
+    void setRecorder(PacketRecorderPtr recorder);
+    void playRecord(PacketPlayerPtr player);
+
     bool isConnected();
     bool isConnecting();
-    ticks_t getElapsedTicksSinceLastRead() const { return m_connection ? m_connection->getElapsedTicksSinceLastRead() : -1; }
+    ticks_t getElapsedTicksSinceLastRead() const;
 #ifdef __EMSCRIPTEN__
     WebConnectionPtr getConnection() { return m_connection; }
 #else
@@ -77,8 +73,10 @@ protected:
     virtual void onConnect();
     virtual void onRecv(const InputMessagePtr& inputMessage);
     virtual void onError(const std::error_code& err);
+    virtual void onSend() {};
 
     void onProxyPacket(const std::shared_ptr<std::vector<uint8_t>>& packet);
+    void onPlayerPacket(const std::shared_ptr<std::vector<uint8_t>>& packet);
     void onLocalDisconnected(std::error_code ec);
     bool m_disconnected = false;
     uint32_t m_proxy = 0;
@@ -86,6 +84,8 @@ protected:
     std::array<uint32_t, 4> m_xteaKey{};
     uint32_t m_packetNumber{ 0 };
 
+    PacketPlayerPtr m_player;
+    PacketRecorderPtr m_recorder;
 private:
     void internalRecvHeader(const uint8_t* buffer, uint16_t size);
     void internalRecvData(const uint8_t* buffer, uint16_t size);

@@ -57,7 +57,8 @@ useRadioGroup = nil
 currentHotkeys = nil
 boundCombosCallback = {}
 hotkeysList = {}
-disableHotkeysCount = 0
+local hotkeyBlockingSources = {}
+local nextSourceId = 1
 lastHotkeyTime = g_clock.millis()
 local hotkeysWindowButton = nil
 
@@ -417,6 +418,9 @@ function addKeyCombo(keyCombo, keySettings, focus)
     if not keyCombo then
         return
     end
+    if modules.game_actionbar and modules.game_actionbar.removeHotkeyFromActionBar then
+        modules.game_actionbar.removeHotkeyFromActionBar(keyCombo)
+    end
     local hotkeyLabel = currentHotkeys:getChildById(keyCombo)
     if not hotkeyLabel then
         hotkeyLabel = g_ui.createWidget('HotkeyListLabel')
@@ -685,10 +689,10 @@ function updateHotkeyForm(reset, dontUpdateCombo)
             hotkeyText:enable()
             hotkeyText:focus()
             hotKeyTextLabel:enable()
+            hotkeyText:setText(currentHotkeyLabel.value)
             if reset then
                 hotkeyText:setCursorPos(-1)
             end
-            hotkeyText:setText(currentHotkeyLabel.value)
             sendAutomatically:setChecked(currentHotkeyLabel.autoSend)
             sendAutomatically:setEnabled(currentHotkeyLabel.value and #currentHotkeyLabel.value > 0)
             selectObjectButton:enable()
@@ -737,7 +741,7 @@ function onHotkeyTextChange(value)
         currentHotkeyLabel.autoSend = false
     end
     updateHotkeyLabel(currentHotkeyLabel)
-    updateHotkeyForm()
+    updateHotkeyForm(false, true)
 end
 
 function onSendAutomaticallyChange(autoSend)
@@ -752,7 +756,7 @@ function onSendAutomaticallyChange(autoSend)
     end
     currentHotkeyLabel.autoSend = autoSend
     updateHotkeyLabel(currentHotkeyLabel)
-    updateHotkeyForm()
+    updateHotkeyForm(false, true)
 end
 
 function onChangeUseType(useTypeWidget)
@@ -795,23 +799,131 @@ function hotkeyCaptureOk(assignWindow, keyCombo)
     assignWindow:destroy()
 end
 
-function enableHotkeys(value)
-    disableHotkeysCount = disableHotkeysCount + (value and -1 or 1)
-
-    if disableHotkeysCount < 0 then
-        disableHotkeysCount = 0;
+function enableHotkeys(sourceId)
+    if sourceId then
+        hotkeyBlockingSources[sourceId] = nil
     end
 end
 
+function disableHotkeys(sourceIdentifier)
+    local sourceId = sourceIdentifier or ("auto_" .. nextSourceId)
+    nextSourceId = nextSourceId + 1
+    hotkeyBlockingSources[sourceId] = true
+    return sourceId
+end
+
+local function getCallerModule()
+    local info = debug.getinfo(3, "S")
+    if info and info.source then
+        local source = info.source:gsub("@", "")
+        local moduleName = source:match("/modules/([^/]+)/") or 
+                          source:match("\\modules\\([^\\]+)\\") or
+                          source:match("([^/\\]+)%.lua$") or
+                          "unknown"
+        return moduleName:gsub("_", "")
+    end
+    return "unknown"
+end
+
+function createHotkeyBlock(sourceIdentifier)
+    local callerModule = getCallerModule()
+    local fullId = sourceIdentifier and 
+        (sourceIdentifier .. "_" .. callerModule) or 
+        ("auto_" .. callerModule .. "_" .. nextSourceId)
+    local blockId = disableHotkeys(fullId)
+    return {
+        release = function()
+            enableHotkeys(blockId)
+        end,
+        getId = function()
+            return fullId
+        end
+    }
+end
+
 function areHotkeysDisabled()
-    return disableHotkeysCount > 0
+    for _ in pairs(hotkeyBlockingSources) do
+        return true
+    end
+    return false
+end
+
+function clearAllHotkeyBlocks()
+    hotkeyBlockingSources = {}
+end
+function getHotkeyBlockingInfo()
+    local count = 0
+    local sources = {}
+    for sourceId in pairs(hotkeyBlockingSources) do
+        count = count + 1
+        table.insert(sources, sourceId)
+    end
+    table.sort(sources)
+    return count, sources
+end
+
+function printHotkeyBlockingInfo()
+    local count, sources = getHotkeyBlockingInfo()
+    print("=== Hotkey Blocking Info ===")
+    print("Total blocks: " .. count)
+    if count > 0 then
+        print("Active sources:")
+        for i, source in ipairs(sources) do
+            print("  " .. i .. ". " .. source)
+        end
+    else
+        print("No active blocks")
+    end
+    print("===========================")
 end
 
 -- Even if hotkeys are enabled, only the hotkeys containing Ctrl or Alt or F1-F12 will be enabled when
 -- chat is opened (no WASD mode). This is made to prevent executing hotkeys while typing...
 function canPerformKeyCombo(keyCombo)
-    return disableHotkeysCount == 0 and
-               (not modules.game_console:isChatEnabled() or string.match(keyCombo, 'F%d%d?') or
-                   string.match(keyCombo, 'Ctrl%+') or string.match(keyCombo, 'Shift%+..+') or
-                   string.match(keyCombo, 'Alt%+'))
+    if areHotkeysDisabled() then
+        return false
+    end
+    if not modules.game_console.isChatEnabled() then
+        return true
+    end
+    return  string.match(keyCombo, "Ctrl%+") or
+            string.match(keyCombo, "Alt%+") or 
+            string.match(keyCombo, "F%d+")
+end
+
+-- Actionbar
+function removeHotkeyByCombo(keyCombo)
+    if not keyCombo or keyCombo == "" then
+        return false
+    end
+    local hotkeyLabel = currentHotkeys and currentHotkeys:getChildById(keyCombo)
+    if hotkeyLabel then
+        if boundCombosCallback[keyCombo] then
+            g_keyboard.unbindKeyPress(keyCombo, boundCombosCallback[keyCombo])
+            boundCombosCallback[keyCombo] = nil
+        end
+        if currentHotkeyLabel == hotkeyLabel then
+            currentHotkeyLabel = nil
+        end
+        hotkeyLabel:destroy()
+        updateHotkeyForm(true)
+        return true
+    end
+    return false
+end
+
+function isHotkeyUsedByManager(keyCombo)
+    if not keyCombo or keyCombo == "" then
+        return false
+    end
+    if boundCombosCallback[keyCombo] then
+        return true
+    end
+    if currentHotkeys then
+        local hotkeyLabel = currentHotkeys:getChildById(keyCombo)
+        if hotkeyLabel then
+            return true
+        end
+    end
+    return false
 end

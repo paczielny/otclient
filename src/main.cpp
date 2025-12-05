@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -20,16 +20,17 @@
  * THE SOFTWARE.
  */
 
-#include <client/client.h>
-#include <client/game.h>
-#include <client/gameconfig.h>
-#include <client/localplayer.h>
-#include <framework/core/application.h>
-#include <framework/core/resourcemanager.h>
-#include <framework/luaengine/luainterface.h>
+#include "client/client.h"
+#include "client/gameconfig.h"
+#include "framework/core/graphicalapplication.h"
+#include "framework/core/resourcemanager.h"
+#include "framework/luaengine/luainterface.h"
+#include "framework/platform/platform.h"
 
 #ifndef ANDROID
 #if ENABLE_DISCORD_RPC == 1
+#include "client/game.h"
+#include "client/localplayer.h"
 #include <framework/discord/discord.h>
 #endif
 #endif
@@ -61,7 +62,7 @@ extern "C" {
 #if ENABLE_ENCRYPTION == 1 && ENABLE_ENCRYPTION_BUILDER == 1
         if (std::find(args.begin(), args.end(), "--encrypt") != args.end()) {
             g_lua.init();
-            g_resources.runEncryption(args.size() >= 3 ? args[2] : ENCRYPTION_PASSWORD);
+            g_resources.runEncryption(args.size() >= 3 ? args[2] : std::string(ENCRYPTION_PASSWORD));
             std::cout << "Encryption complete" << std::endl;
 #ifdef WIN32
             MessageBoxA(NULL, "Encryption complete", "Success", 0);
@@ -77,6 +78,10 @@ extern "C" {
         // find script init.lua and run it
         if (!g_resources.discoverWorkDir("init.lua"))
             g_logger.fatal("Unable to find work directory, the application cannot be initialized.");
+
+        // initialize application framework and otclient
+        const auto drawEvents = ApplicationDrawEventsPtr(&g_client, [](ApplicationDrawEvents*) {});
+        g_app.init(args, new GraphicalApplicationContext(g_gameConfig.getSpriteSize(), drawEvents));
 
 #ifndef ANDROID
 #if ENABLE_DISCORD_RPC == 1
@@ -98,8 +103,6 @@ extern "C" {
 #endif
 #endif
 
-        // initialize application framework and otclient
-        g_app.init(args, new GraphicalApplicationContext(g_gameConfig.getSpriteSize(), ApplicationDrawEventsPtr(&g_client)));
         g_client.init(args);
 #ifdef FRAMEWORK_NET
         g_http.init();

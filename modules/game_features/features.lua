@@ -2,13 +2,16 @@ controller = Controller:new()
 controller:registerEvents(g_game, {
     onClientVersionChange = function(version)
         -- g_game.enableFeature(GameKeepUnawareTiles)
-        -- g_game.enableFeature(GameSmoothWalkElevation)
         -- g_game.enableFeature(GameNegativeOffset)
         -- g_game.enableFeature(GameWingsAurasEffectsShader)
         -- g_game.enableFeature(GameAllowCustomBotScripts)
 
-        g_game.enableFeature(GameAllowPreWalk)
         g_game.enableFeature(GameFormatCreatureName)
+
+        -- For Walk
+        g_game.enableFeature(GameAllowPreWalk)
+        g_game.enableFeature(GameMapCache)
+        -- g_game.enableFeature(GameSmoothWalkElevation)
 
         if version >= 750 then
             g_game.enableFeature(GameSoul)
@@ -46,6 +49,7 @@ controller:registerEvents(g_game, {
         if version >= 841 then
             g_game.enableFeature(GameChallengeOnLogin)
             g_game.enableFeature(GameMessageSizeCheck)
+            g_game.enableFeature(GameTileAddThingWithStackpos)
         end
 
         if version >= 854 then
@@ -206,6 +210,7 @@ controller:registerEvents(g_game, {
         end
 
         if version >= 1281 then
+            g_game.enableFeature(GameForgeSkillStats)
             g_game.enableFeature(GamePlayerFamiliars)
             g_game.disableFeature(GameEnvironmentEffect)
             g_game.disableFeature(GameItemAnimationPhase)
@@ -248,7 +253,13 @@ controller:registerEvents(g_game, {
         end
 
         if version >= 1332 then
-            g_game.enableFeature(GameForgeConvergence);
+            g_game.enableFeature(GameForgeConvergence)
+        end
+
+        if version >= 1410 then
+            g_game.disableFeature(GameAdditionalSkills)
+            g_game.disableFeature(GameForgeSkillStats)
+            g_game.enableFeature(GameCharacterSkillStats)
         end
     end
 })

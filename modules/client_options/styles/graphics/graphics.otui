@@ -53,13 +53,13 @@ UIWidget
       !text: tr('Game framerate limit: %s', 'max')
       anchors.top: prev.bottom
       margin-top: 5
-      &minimumScrollValue: 10
-      &maximumScrollValue: 201
+      &minimumScrollValue: 1
+      &maximumScrollValue: 501
       &scrollSize: 21
       @onSetup: |
         local value = modules.client_options.getOption('backgroundFrameRate')
         local text = value
-        if value <= 0 or value >= 201 then
+        if value <= 0 or value >= 501 then
           text = 'max'
         end
 

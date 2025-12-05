@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,11 +21,13 @@
  */
 
 #include "statictext.h"
-#include "framework/core/graphicalapplication.h"
+
+#include "gameconfig.h"
 #include "map.h"
-#include <framework/core/clock.h>
-#include <framework/core/eventdispatcher.h>
-#include <framework/graphics/fontmanager.h>
+#include "framework/core/clock.h"
+#include "framework/core/eventdispatcher.h"
+#include "framework/core/graphicalapplication.h"
+#include "framework/graphics/fontmanager.h"
 
 StaticText::StaticText()
 {
@@ -38,7 +40,7 @@ void StaticText::drawText(const Point& dest, const Rect& parentRect)
     const auto& textSize = m_cachedText.getTextSize();
 
     auto rect = Rect(dest - Point(textSize.width() / 2, textSize.height()) + (Point(20, 5) / g_app.getStaticTextScale()), textSize);
-    if (g_app.getStaticTextScale() == PlatformWindow::DEFAULT_DISPLAY_DENSITY)
+    if (g_app.getStaticTextScale() == DEFAULT_DISPLAY_DENSITY)
         rect.bind(parentRect);
 
     // draw only if the real center is not too far from the parent center, or its a yell
@@ -109,7 +111,7 @@ void StaticText::scheduleUpdate()
 
 void StaticText::compose()
 {
-    static const Color
+    static constexpr Color
         MESSAGE_COLOR1(239, 239, 0),
         MESSAGE_COLOR2(254, 101, 0),
         MESSAGE_COLOR3(95, 247, 247);
@@ -137,7 +139,7 @@ void StaticText::compose()
         text += " says:\n";
         m_color = MESSAGE_COLOR3;
     } else {
-        g_logger.warning(stdext::format("Unknown speak type: %d", m_mode));
+        g_logger.warning("Unknown speak type: {}", static_cast<uint8_t>(m_mode));
     }
 
     for (uint32_t i = 0; i < m_messages.size(); ++i) {

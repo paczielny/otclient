@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,6 +81,7 @@ namespace Proto
         GameServerFloorDescription = 75,
 
         // original tibia ONLY
+        GameServerWeaponProficiencyExperience = 92,
         GameServerImbuementDurations = 93,
         GameServerPassiveCooldown = 94,
         GameServerBosstiaryData = 97,
@@ -117,8 +118,10 @@ namespace Proto
         GameServerTextEffect = 132,
         GameServerMissleEffect = 133, // Anthem on 13.x
         GameServerItemClasses = 134,
-        GameServerTrappers = 135,
+        GameServerTrappers = 135, // GameServerOpenForge = 135,
+        GameServerBrowseForgeHistory = 136,
         GameServerCloseForgeWindow = 137,
+        GameServerForgeResult = 138,
         GameServerCreatureData = 139,
         GameServerCreatureHealth = 140,
         GameServerCreatureLight = 141,
@@ -170,7 +173,9 @@ namespace Proto
         GameServerFloorChangeUp = 190,
         GameServerFloorChangeDown = 191,
         GameServerLootContainers = 192,
+        GameServerVirtue = 193,
         GameServerCyclopediaHouseAuctionMessage = 195,
+        GameServerWeaponProficiencyInfo = 196,
         GameServerCyclopediaHousesInfo = 198,
         GameServerCyclopediaHouseList = 199,
         GameServerChooseOutfit = 200,
@@ -178,6 +183,7 @@ namespace Proto
         GameServerSendItemsPrice = 205,
         GameServerSendUpdateSupplyTracker = 206,
         GameServerSendUpdateLootTracker = 207,
+        GameServerQuestTracker = 208,
         GameServerKillTracker = 209,
         GameServerVipAdd = 210,
         GameServerVipState = 211,
@@ -234,6 +240,7 @@ namespace Proto
         ClientPingBack = 30,
         ClientUseStash = 40,
         ClientBestiaryTrackerStatus = 42,
+        ClientPartyAnalyzerAction = 43,
 
         // all in game opcodes must be equal or greater than 50
         ClientFirstGameOpcode = 50,
@@ -283,6 +290,9 @@ namespace Proto
         ClientOnWrapItem = 139,
         ClientLook = 140,
         ClientLookCreature = 141,
+        ClientSendQuickLoot = 143,
+        ClientLootContainer = 144,
+        ClientQuickLootBlackWhitelist = 145,
         ClientTalk = 150,
         ClientRequestChannels = 151,
         ClientJoinChannel = 152,
@@ -311,18 +321,24 @@ namespace Proto
         ClientBosstiaryRequestSlotAction = 176,
         ClientRequestHighscore = 177,
         ClientCancelAttackAndFollow = 190,
+        ClientForgeEnter = 191,
+        ClientForgeBrowseHistory = 192,
         ClientUpdateTile = 201,
         ClientRefreshContainer = 202,
         ClientBrowseField = 203,
         ClientSeekInContainer = 204,
         ClientInspectionObject = 205,
         ClientRequestBless = 207,
+        ClientRequestTrackerQuestLog = 208,
         ClientRequestOutfit = 210,
         ClientChangeOutfit = 211,
         ClientMount = 212,
         ClientApplyImbuement = 213,
         ClientClearImbuement = 214,
         ClientCloseImbuingWindow = 215,
+        ClientOpenRewardWall = 216,
+        ClientOpenRewardHistory = 217,
+        sendGetRewardDaily = 218,
         ClientAddVip = 220,
         ClientRemoveVip = 221,
         ClientEditVip = 222,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,8 @@
 
 #include <framework/core/resourcemanager.h>
 
-#include <pugixml.hpp>
+#include "item.h"
+#include "tile.h"
 
 HouseManager g_houses;
 
@@ -48,7 +49,7 @@ void House::setTile(const TilePtr& tile)
 
 TilePtr House::getTile(const Position& position)
 {
-    const TileMap::const_iterator iter = m_tiles.find(position);
+    const auto iter = m_tiles.find(position);
     if (iter != m_tiles.end())
         return iter->second;
     return nullptr;
@@ -61,11 +62,12 @@ void House::addDoor(const ItemPtr& door)
     m_doors[++m_lastDoorId] = door;
 }
 
+void House::removeDoor(const ItemPtr& door) { removeDoorById(door->getDoorId()); }
+
 void House::removeDoorById(uint32_t doorId)
 {
     if (doorId >= m_lastDoorId)
-        throw Exception("Failed to remove door of id %d (would overflow), max id: %d",
-                        doorId, m_lastDoorId);
+        throw Exception("Failed to remove door of id {} (would overflow), max id: {}", doorId, m_lastDoorId);
     m_doors[doorId] = nullptr;
 }
 
@@ -73,7 +75,7 @@ void House::load(const pugi::xml_node& node)
 {
     std::string name = node.attribute("name").as_string();
     if (name.empty())
-        name = stdext::format("Unnamed house #%lu", getId());
+        name = fmt::format("Unnamed house #{}", getId());
 
     setName(name);
     setRent(node.attribute("rent").as_uint());
@@ -152,7 +154,7 @@ void HouseManager::load(const std::string& fileName)
             house->load(elem);
         }
     } catch (const std::exception& e) {
-        g_logger.error(stdext::format("Failed to load '%s': %s", fileName, e.what()));
+        g_logger.error("Failed to load '{}': {}", fileName, e.what());
     }
     sort();
 }
@@ -174,10 +176,10 @@ void HouseManager::save(const std::string& fileName)
         }
 
         if (!doc.save_file(("data" + fileName).c_str(), "\t", pugi::format_default, pugi::encoding_utf8)) {
-            throw Exception("failed to save houses XML %s", fileName);
+            throw Exception("failed to save houses XML {}", fileName);
         }
     } catch (const std::exception& e) {
-        g_logger.error(stdext::format("Failed to save '%s': %s", fileName, e.what()));
+        g_logger.error("Failed to save '{}': {}", fileName, e.what());
     }
 }
 

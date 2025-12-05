@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,19 +21,16 @@
  */
 
 #include "attachableobject.h"
-#include <framework/graphics/particleeffect.h>
-#include <framework/graphics/particlemanager.h>
 
-#include <framework/core/eventdispatcher.h>
-#include <framework/ui/uimanager.h>
-#include <framework/ui/uiwidget.h>
-
-#include <algorithm>
-
+#include "attachedeffect.h"
 #include "client.h"
-#include "game.h"
 #include "map.h"
 #include "uimap.h"
+#include "framework/core/eventdispatcher.h"
+#include "framework/graphics/drawpoolmanager.h"
+#include "framework/graphics/particleeffect.h"
+#include "framework/graphics/particlemanager.h"
+#include "framework/ui/uiwidget.h"
 
 extern ParticleManager g_particles;
 
@@ -152,7 +149,7 @@ AttachedEffectPtr AttachableObject::getAttachedEffectById(uint16_t id)
     return *it;
 }
 
-void AttachableObject::drawAttachedEffect(const Point& dest, const LightViewPtr& lightView, const bool isOnTop)
+void AttachableObject::drawAttachedEffect(const Point& dest, LightView* lightView, const bool isOnTop)
 {
     if (!hasAttachedEffects()) return;
     for (const auto& effect : m_data->attachedEffects) {
@@ -165,7 +162,7 @@ void AttachableObject::drawAttachedEffect(const Point& dest, const LightViewPtr&
     }
 }
 
-void AttachableObject::drawAttachedLightEffect(const Point& dest, const LightViewPtr& lightView) {
+void AttachableObject::drawAttachedLightEffect(const Point& dest, LightView* lightView) {
     if (!hasAttachedEffects()) return;
     for (const auto& effect : m_data->attachedEffects)
         effect->drawLight(dest, lightView);
@@ -253,7 +250,7 @@ void AttachableObject::attachWidget(const UIWidgetPtr& widget) {
         return;
 
     if (g_map.isWidgetAttached(widget)) {
-        g_logger.error(stdext::format("Failed to attach widget %s, this widget is already attached to map.", widget->getId()));
+        g_logger.error("Failed to attach widget {}, this widget is already attached to map.", widget->getId());
         return;
     }
 

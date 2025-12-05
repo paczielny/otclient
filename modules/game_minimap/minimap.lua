@@ -1,3 +1,4 @@
+local iconTopMenu = nil
 -- @ Minimap
 local minimapWidget = nil -- bot fix
 local otmm = true
@@ -143,6 +144,13 @@ function mapController:onGameEnd()
     self.ui.minimapBorder.minimap:save()
 end
 
+function mapController:onTerminate()
+    if iconTopMenu then
+        iconTopMenu:destroy()
+        iconTopMenu = nil
+    end
+end
+
 function zoomIn()
     mapController.ui.minimapBorder.minimap:zoomIn()
 end
@@ -166,7 +174,7 @@ function fullscreen()
         fullscreenWidget = nil
         minimapWidget:setParent(mapController.ui.minimapBorder)
         minimapWidget:fill('parent')
-        mapController.ui:show(true)
+        mapController.ui:show()
         zoom = minimapWidget.zoomMinimap
         g_keyboard.unbindKeyDown('Escape')
         minimapWidget.fullMapView = false
@@ -239,4 +247,38 @@ function getMiniMapUi()
     return mapController.ui.minimapBorder.minimap
 end
 
--- @ End of Minimap
+function extendedView(extendedView)
+    if extendedView then
+        if not iconTopMenu then
+            iconTopMenu = modules.client_topmenu.addTopRightToggleButton('miniMap', tr('Show miniMap'),
+                '/images/topbuttons/minimap', toggle)
+            iconTopMenu:setOn(mapController.ui:isVisible())
+            mapController.ui:setBorderColor('black')
+            mapController.ui:setBorderWidth(2)
+        end
+    else
+        if iconTopMenu then
+            iconTopMenu:destroy()
+            iconTopMenu = nil
+        end
+        mapController.ui:setBorderColor('alpha')
+        mapController.ui:setBorderWidth(0)
+        local mainRightPanel = modules.game_interface.getMainRightPanel()
+        if not mainRightPanel:hasChild(mapController.ui) then
+            mainRightPanel:insertChild(1, mapController.ui)
+        end
+        mapController.ui:show()
+
+    end
+    mapController.ui.moveOnlyToMain = not extendedView
+end
+
+function toggle()
+    if iconTopMenu:isOn() then
+        mapController.ui:hide()
+        iconTopMenu:setOn(false)
+    else
+        mapController.ui:show()
+        iconTopMenu:setOn(true)
+    end
+end

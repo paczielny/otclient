@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,10 +22,8 @@
 
 #include "uisprite.h"
 #include <client/spritemanager.h>
-#include <framework/graphics/texturemanager.h>
-
-#include "framework/graphics/drawpool.h"
 #include "framework/graphics/drawpoolmanager.h"
+#include "framework/otml/otmlnode.h"
 
 void UISprite::drawSelf(const DrawPoolType drawPane)
 {
@@ -61,8 +59,11 @@ void UISprite::setSpriteId(const int id)
         return;
     }
 
-    const auto& image = g_sprites.getSpriteImage(id);
-    m_sprite = image ? std::make_shared<Texture>(image) : nullptr;
+    m_sprite = nullptr;
+    if (const auto& image = g_sprites.getSpriteImage(id)) {
+        m_sprite = std::make_shared<Texture>(image);
+        m_sprite->allowAtlasCache();
+    }
 }
 
 void UISprite::onStyleApply(const std::string_view styleName, const OTMLNodePtr& styleNode)

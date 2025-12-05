@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,11 +22,10 @@
 
 #include "shadermanager.h"
 
-#include <framework/core/eventdispatcher.h>
-#include <framework/core/resourcemanager.h>
-#include <framework/graphics/graphics.h>
-#include <framework/graphics/paintershaderprogram.h>
-#include <framework/graphics/shader/shadersources.h>
+#include "paintershaderprogram.h"
+#include "framework/core/eventdispatcher.h"
+#include "framework/core/resourcemanager.h"
+#include "shader/shadersources.h"
 
 ShaderManager g_shaders;
 
@@ -68,12 +67,12 @@ void ShaderManager::createFragmentShader(const std::string_view name, const std:
 
         shader->addShaderFromSourceCode(ShaderType::VERTEX, std::string{ glslMainWithTexCoordsVertexShader } + glslPositionOnlyVertexShader.data());
         if (!shader->addShaderFromSourceFile(ShaderType::FRAGMENT, path)) {
-            g_logger.error(stdext::format("unable to load fragment shader '%s' from source file '%s'", name, path));
+            g_logger.error("unable to load fragment shader '{}' from source file '{}'", name, path);
             return;
         }
 
         if (!shader->link()) {
-            g_logger.error(stdext::format("unable to link shader '%s' from file '%s'", name, path));
+            g_logger.error("unable to link shader '{}' from file '{}'", name, path);
             return;
         }
 
@@ -91,12 +90,12 @@ void ShaderManager::createFragmentShaderFromCode(const std::string_view name, co
 
         shader->addShaderFromSourceCode(ShaderType::VERTEX, std::string{ glslMainWithTexCoordsVertexShader } + glslPositionOnlyVertexShader.data());
         if (!shader->addShaderFromSourceCode(ShaderType::FRAGMENT, code)) {
-            g_logger.error(stdext::format("unable to load fragment shader '%s'", name));
+            g_logger.error("unable to load fragment shader '{}'", name);
             return;
         }
 
         if (!shader->link()) {
-            g_logger.error(stdext::format("unable to link shader '%s'", name));
+            g_logger.error("unable to link shader '{}'", name);
             return;
         }
 

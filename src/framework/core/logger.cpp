@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,9 @@
  */
 
 #include "logger.h"
+
 #include "eventdispatcher.h"
-
-#include <framework/core/asyncdispatcher.h>
-#include <framework/core/resourcemanager.h>
-
-#include <framework/luaengine/luainterface.h>
-#include <framework/platform/platform.h>
+#include "framework/platform/platform.h"
 
 #ifdef FRAMEWORK_GRAPHICS
 #include <framework/platform/platformwindow.h>
@@ -69,7 +65,8 @@ void Logger::log(Fw::LogLevel level, const std::string_view message)
         return;
     }
 
-    std::string outmsg{ std::string{s_logPrefixes[level]} + message.data() };
+    std::string outmsg{ s_logPrefixes[level] };
+    outmsg.append(message);
 
 #ifdef ANDROID
     __android_log_print(ANDROID_LOG_INFO, "OTClientMobile", "%s", outmsg.c_str());
@@ -143,7 +140,7 @@ void Logger::setLogFile(const std::string_view file)
 {
     m_outFile.open(stdext::utf8_to_latin1(file), std::ios::out | std::ios::app);
     if (!m_outFile.is_open() || !m_outFile.good()) {
-        g_logger.error(stdext::format("Unable to save log to '%s'", file));
+        g_logger.error("Unable to save log to '{}'", file);
         return;
     }
     m_outFile.flush();

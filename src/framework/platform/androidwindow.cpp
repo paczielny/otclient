@@ -25,6 +25,7 @@
 #include "androidwindow.h"
 #include "androidmanager.h"
 #include <game-activity/native_app_glue/android_native_app_glue.h>
+#include "framework/core/clock.h"
 #include <framework/core/eventdispatcher.h>
 
 AndroidWindow& g_androidWindow = (AndroidWindow&) g_window;
@@ -130,7 +131,7 @@ void AndroidWindow::internalCreateGLContext() {
 
     m_eglContext = eglCreateContext(m_eglDisplay, m_eglConfig, EGL_NO_CONTEXT, attrList);
     if(m_eglContext == EGL_NO_CONTEXT )
-        g_logger.fatal(stdext::format("Unable to create EGL context: %s", eglGetError()));
+        g_logger.fatal("Unable to create EGL context: {}", eglGetError());
 
     internalConnectSurface();
 }
@@ -170,7 +171,7 @@ void AndroidWindow::internalCreateGLSurface() {
 
     m_eglSurface = eglCreateWindowSurface(m_eglDisplay, m_eglConfig, m_app->window, NULL);
     if(m_eglSurface == EGL_NO_SURFACE)
-        g_logger.fatal(stdext::format("Unable to create EGL surface: %s", eglGetError()));
+        g_logger.fatal("Unable to create EGL surface: {}", eglGetError());
 }
 
 void AndroidWindow::queryGlSize() {
@@ -373,6 +374,11 @@ void AndroidWindow::initializeAndroidApp(android_app* app) {
     android_app_set_motion_event_filter(m_app, NULL);
 }
 
+void AndroidWindow::onDisplayDensityChanged(float newDensity) {
+    m_baseDisplayDensity = newDensity;
+    m_hasBaseDisplayDensity = true;
+}
+
 void AndroidWindow::onNativeTouch(int actionType,
                                   uint32_t pointerIndex,
                                   GameActivityMotionEvent* motionEvent) {
@@ -430,7 +436,7 @@ void AndroidWindow::handleCmd(int32_t cmd) {
                 } else {
                     internalInitGL();
                 }
-                m_displayDensity = g_androidManager.getScreenDensity();
+                updateDisplayDensityFromSystem(g_androidManager.getScreenDensity());
                 m_visible = true;
             } else {
                 m_visible = false;
@@ -443,10 +449,37 @@ void AndroidWindow::handleCmd(int32_t cmd) {
             break;
         case APP_CMD_WINDOW_RESIZED:
         case APP_CMD_CONFIG_CHANGED:
+            updateDisplayDensityFromSystem(g_androidManager.getScreenDensity());
             queryGlSize();
             break;
         default:
             break;
+    }
+}
+
+void AndroidWindow::updateDisplayDensityFromSystem(float screenDensity) {
+    if (screenDensity <= 0.f) {
+        m_displayDensity = m_baseDisplayDensity;
+        return;
+    }
+
+    if (!m_hasBaseDisplayDensity) {
+        m_baseDisplayDensity = screenDensity;
+        m_hasBaseDisplayDensity = true;
+        m_displayDensity = screenDensity;
+        return;
+    }
+
+    if (m_baseDisplayDensity <= 0.f) {
+        m_displayDensity = screenDensity;
+        return;
+    }
+
+    const float ratio = screenDensity / m_baseDisplayDensity;
+    if (ratio > 0.9f && ratio < 1.1f) {
+        m_displayDensity = screenDensity;
+    } else {
+        m_displayDensity = m_baseDisplayDensity;
     }
 }
 

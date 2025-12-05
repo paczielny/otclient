@@ -5,8 +5,10 @@
     "asio",
     "abseil",
     "cpp-httplib",
+    "cppcodec",
     "discord-rpc",
     "liblzma",
+    "libobfuscate",
     "libogg",
     "libvorbis",
     "nlohmann-json",
@@ -19,6 +21,9 @@
     "stduuid",
     "zlib",
     "bshoshany-thread-pool",
+    "fmt",
+    "utfcpp",
+    "gtest",
     {
       "name": "luajit",
       "platform": "!android & !wasm32"

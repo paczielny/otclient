@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010-2024 OTClient <https://github.com/edubart/otclient>
+ * Copyright (c) 2010-2025 OTClient <https://github.com/edubart/otclient>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,69 +26,8 @@
 
 #include "attachableobject.h"
 #include "declarations.h"
-#include "item.h"
-#include "mapview.h"
+#include "staticdata.h"
 #include "statictext.h"
-
-#ifdef FRAMEWORK_EDITOR
-enum tileflags_t : uint32_t
-{
-    TILESTATE_NONE = 0,
-    TILESTATE_PROTECTIONZONE = 1 << 0,
-    TILESTATE_TRASHED = 1 << 1,
-    TILESTATE_OPTIONALZONE = 1 << 2,
-    TILESTATE_NOLOGOUT = 1 << 3,
-    TILESTATE_HARDCOREZONE = 1 << 4,
-    TILESTATE_REFRESH = 1 << 5,
-
-    // internal usage
-    TILESTATE_HOUSE = 1 << 6,
-    TILESTATE_TELEPORT = 1 << 17,
-    TILESTATE_MAGICFIELD = 1 << 18,
-    TILESTATE_MAILBOX = 1 << 19,
-    TILESTATE_TRASHHOLDER = 1 << 20,
-    TILESTATE_BED = 1 << 21,
-    TILESTATE_DEPOT = 1 << 22,
-    TILESTATE_TRANSLUECENT_LIGHT = 1 << 23,
-
-    TILESTATE_LAST = 1 << 24
-};
-#endif
-
-enum class TileSelectType : uint8_t
-{
-    NONE, FILTERED, NO_FILTERED
-};
-
-enum TileThingType : uint32_t
-{
-    FULL_GROUND = 1 << 0,
-    NOT_WALKABLE = 1 << 1,
-    NOT_PATHABLE = 1 << 2,
-    NOT_SINGLE_DIMENSION = 1 << 3,
-    BLOCK_PROJECTTILE = 1 << 4,
-    HAS_DISPLACEMENT = 1 << 5,
-    IS_NOT_PATHAB = 1 << 6,
-    ELEVATION = 1 << 7,
-    IS_OPAQUE = 1 << 8,
-    HAS_LIGHT = 1 << 9,
-    HAS_TALL_THINGS = 1 << 10,
-    HAS_WIDE_THINGS = 1 << 11,
-    HAS_TALL_THINGS_2 = 1 << 12,
-    HAS_WIDE_THINGS_2 = 1 << 13,
-    HAS_WALL = 1 << 14,
-    HAS_HOOK_EAST = 1 << 15,
-    HAS_HOOK_SOUTH = 1 << 16,
-    HAS_CREATURE = 1 << 17,
-    HAS_COMMON_ITEM = 1 << 18,
-    HAS_TOP_ITEM = 1 << 19,
-    HAS_BOTTOM_ITEM = 1 << 20,
-    HAS_GROUND_BORDER = 1 << 21,
-    HAS_TOP_GROUND_BORDER = 1 << 22,
-    HAS_THING_WITH_ELEVATION = 1 << 23,
-    IGNORE_LOOK = 1 << 24,
-    CORRECT_CORPSE = 1 << 25
-};
 
 class Tile final : public AttachableObject
 {
@@ -99,8 +38,8 @@ public:
     bool isTile() override { return true; }
 
     void onAddInMapView();
-    void draw(const Point& dest, int flags, const LightViewPtr& lightView = nullptr);
-    void drawLight(const Point& dest, const LightViewPtr& lightView);
+    void draw(const Point& dest, int flags, LightView* lightView = nullptr);
+    void drawLight(const Point& dest, LightView* lightView);
 
     void clean();
 
@@ -128,7 +67,7 @@ public:
     std::vector<CreaturePtr> getCreatures();
 
     std::vector<ItemPtr> getItems();
-    ItemPtr getGround() { const auto& ground = getThing(0); return ground && ground->isGround() ? ground->static_self_cast<Item>() : nullptr; }
+    ItemPtr getGround();
     int getGroundSpeed();
     uint8_t getMinimapColorByte();
     int getThingCount() { return m_things.size(); }
@@ -137,21 +76,26 @@ public:
     bool isClickable();
     bool isPathable() { return (m_thingTypeFlag & NOT_PATHABLE) == 0; }
     bool isFullGround() { return m_thingTypeFlag & FULL_GROUND; }
-    bool isFullyOpaque() { return m_thingTypeFlag & IS_OPAQUE; }
+    bool isFullyOpaque();
     bool isSingleDimension() { return (m_thingTypeFlag & NOT_SINGLE_DIMENSION) == 0 && m_walkingCreatures.empty(); }
     bool isLookPossible() { return (m_thingTypeFlag & BLOCK_PROJECTTILE) == 0; }
     bool isEmpty() { return m_things.empty(); }
     bool isDrawable() { return !isEmpty() || !m_walkingCreatures.empty() || hasEffect() || hasAttachedEffects(); }
     bool isCovered(int8_t firstFloor);
     bool isCompletelyCovered(uint8_t firstFloor, bool resetCache);
+    bool isLoading() const;
 
     bool hasBlockingCreature() const;
 
     bool hasEffect() const { return m_effects && !m_effects->empty(); }
-    bool hasGround() { return (getGround() && getGround()->isSingleGround()) || m_thingTypeFlag & HAS_GROUND_BORDER; };
-    bool hasTopGround(const bool ignoreBorder = false) { return (getGround() && getGround()->isTopGround()) || (!ignoreBorder && m_thingTypeFlag & HAS_TOP_GROUND_BORDER); }
+    bool hasGround();
+    bool hasTopGround(const bool ignoreBorder = false);
 
-    bool hasCreature() { return m_thingTypeFlag & HAS_CREATURE; }
+    bool hasCreatures() const { return (m_thingTypeFlag & HAS_CREATURE) != 0; }
+    bool hasCreatures() { return static_cast<const Tile&>(*this).hasCreatures(); }
+
+    void appendSpectators(std::vector<CreaturePtr>& out) const;
+
     bool hasTopItem() const { return m_thingTypeFlag & HAS_TOP_ITEM; }
     bool hasCommonItem() const { return m_thingTypeFlag & HAS_COMMON_ITEM; }
     bool hasBottomItem() const { return m_thingTypeFlag & HAS_BOTTOM_ITEM; }
@@ -217,23 +161,23 @@ public:
 private:
     void updateThingStackPos();
     void drawTop(const Point& dest, int flags, bool forceDraw, uint8_t drawElevation);
-    void drawCreature(const Point& dest, int flags, bool forceDraw, uint8_t drawElevation);
+    void drawCreature(const Point& dest, int flags, bool forceDraw, uint8_t drawElevation, LightView* lightView = nullptr);
+
+    void updateCreatureRangeForInsert(int16_t stackPos, const ThingPtr& thing);
+    void rebuildCreatureRange();
 
     void setThingFlag(const ThingPtr& thing);
 
     void recalculateThingFlag()
     {
         m_thingTypeFlag = 0;
+        rebuildCreatureRange();
         for (const auto& thing : m_things)
             setThingFlag(thing);
     }
 
     bool hasThingWithElevation() { return hasElevation() && m_thingTypeFlag & HAS_THING_WITH_ELEVATION; }
-    void markHighlightedThing(const Color& color) {
-        if (m_highlightThingStackPos > -1 && m_highlightThingStackPos < static_cast<int8_t>(m_things.size())) {
-            m_things[m_highlightThingStackPos]->setMarked(color);
-        }
-    }
+    void markHighlightedThing(const Color& color);
 
     std::vector<CreaturePtr> m_walkingCreatures;
     std::vector<ThingPtr> m_things;
@@ -261,6 +205,9 @@ private:
     uint8_t m_drawElevation{ 0 };
     uint8_t m_minimapColor{ 0 };
     uint8_t m_elevation{ 0 };
+
+    int16_t m_firstCreatureIndex{ -1 };
+    int16_t m_lastCreatureIndex{ -1 };
 
     int8_t m_highlightThingStackPos = -1;
 
