@@ -1,0 +1,509 @@
+WheelSelectionLayer < UIWidget
+  id: selectors
+  anchors.fill: parent
+  phantom: true
+
+  UIWidget
+    id: front
+    anchors.fill: parent
+    phantom: true
+
+    WheelSlot
+      id: 1
+      size: 261 261
+      image-source:
+      anchors.top: parent.top
+      anchors.left: parent.left
+      margin-top: 0
+      margin-left: 0
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/1_hover
+
+    WheelSlot
+      id: 15
+      size: 54 54
+      image-source:
+      anchors.centerIn: parent
+      margin-bottom: 26
+      margin-right: 26
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/15_hover
+
+    WheelSlot
+      id: 16
+      size: 54 54
+      image-source:
+      anchors.top: 15.top
+      anchors.left: 15.right
+      margin-left: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/16_hover
+
+    WheelSlot
+      id: 21
+      size: 54 54
+      image-source:
+      anchors.top: 15.bottom
+      anchors.right: 15.right
+      margin-top: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/21_hover
+
+    WheelSlot
+      id: 22
+      size: 54 54
+      image-source:
+      anchors.top: 16.bottom
+      anchors.left: 16.left
+      margin-top: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/22_hover
+
+    WheelSlot
+      id: 9
+      size: 72 66
+      image-source:
+      anchors.top: 15.top
+      anchors.left: 15.left
+      margin-top: -51
+      margin-left: -20
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/9_hover
+
+    WheelSlot
+      id: 14
+      size: 68 75
+      image-source:
+      anchors.top: 15.top
+      anchors.left: 15.left
+      margin-top: -21
+      margin-left: -52
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/14_hover
+
+    WheelSlot
+      id: 13
+      size: 68 80
+      image-source:
+      anchors.top: 14.top
+      anchors.left: 14.left
+      margin-left: -53
+      margin-top: -5
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/13_hover
+
+    WheelSlot
+      id: 8
+      size: 85 85
+      image-source:
+      anchors.top: 13.top
+      anchors.left: 13.left
+      margin-top: -58
+      margin-left: 21
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/8_hover
+
+    WheelSlot
+      id: 3
+      size: 80 68
+      image-source:
+      anchors.top: 8.top
+      anchors.left: 8.left
+      margin-left: 58
+      margin-top: -21
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/3_hover
+
+    WheelSlot
+      id: 7
+      size: 97 145
+      image-source:
+      anchors.top: 13.top
+      anchors.left: 13.left
+      margin-top: -69
+      margin-left: -50
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/7_hover
+
+    WheelSlot
+      id: 2
+      size: 146 97
+      image-source:
+      anchors.top: 13.top
+      anchors.left: 13.left
+      margin-top: -128
+      margin-left: 10
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/2_hover
+
+    WheelSlot
+      id: 10
+      size: 75 68
+      image-source:
+      anchors.top: 16.top
+      anchors.left: 16.left
+      margin-top: -53
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/10_hover
+
+    WheelSlot
+      id: 17
+      size: 70 76
+      image-source:
+      anchors.top: 16.top
+      anchors.left: 16.left
+      margin-left: 37
+      margin-top: -23
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/17_hover
+
+    WheelSlot
+      id: 4
+      size: 81 68
+      image-source:
+      anchors.top: 10.top
+      anchors.left: 10.left
+      margin-top: -52
+      margin-left: 0
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/4_hover
+
+    WheelSlot
+      id: 11
+      size: 86 86
+      image-source:
+      anchors.top: 17.top
+      anchors.left: 17.left
+      margin-top: -62
+      margin-left: 16
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/11_hover
+
+    WheelSlot
+      id: 18
+      size: 69 82
+      image-source:
+      anchors.top: 17.top
+      anchors.left: 17.left
+      margin-left: 54
+      margin-top: -4
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/18_hover
+
+    WheelSlot
+      id: 5
+      size: 150 101
+      image-source:
+      anchors.top: 4.top
+      anchors.left: 4.left
+      margin-top: -51
+      margin-left: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/5_hover
+
+    WheelSlot
+      id: 12
+      size: 101 151
+      image-source:
+      anchors.top: 18.top
+      anchors.left: 18.left
+      margin-top: -69
+      margin-left: 20
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/12_hover
+
+    WheelSlot
+      id: 6
+      size: 263 263
+      image-source:
+      anchors.top: 5.top
+      anchors.left: 5.left
+      margin-top: -54
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/6_hover
+
+    WheelSlot
+      id: 23
+      size: 70 77
+      image-source:
+      anchors.top: 22.top
+      anchors.left: 22.left
+      margin-left: 38
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/23_hover
+
+    WheelSlot
+      id: 28
+      size: 77 70
+      image-source:
+      anchors.top: 22.top
+      anchors.left: 22.left
+      margin-top: 38
+      margin-left: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/28_hover
+
+    WheelSlot
+      id: 34
+      size: 81 69
+      image-source:
+      anchors.top: 28.top
+      anchors.left: 28.left
+      margin-top: 53
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/34_hover
+
+    WheelSlot
+      id: 29
+      size: 86 86
+      image-source:
+      anchors.top: 23.top
+      anchors.left: 23.left
+      margin-left: 14
+      margin-top: 52
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/29_hover
+
+    WheelSlot
+      id: 24
+      size: 69 81
+      image-source:
+      anchors.top: 23.top
+      anchors.left: 23.left
+      margin-left: 53
+      margin-top: -1
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/24_hover
+
+    WheelSlot
+      id: 35
+      size: 150 101
+      image-source:
+      anchors.top: 34.top
+      anchors.left: 34.left
+      margin-top: 20
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/35_hover
+
+    WheelSlot
+      id: 30
+      size: 101 150
+      image-source:
+      anchors.top: 24.top
+      anchors.left: 24.left
+      margin-left: 20
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/30_hover
+
+    WheelSlot
+      id: 36
+      size: 263 263
+      image-source:
+      anchors.top: 22.top
+      anchors.left: 22.left
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/36_hover
+
+    WheelSlot
+      id: 20
+      size: 70 76
+      image-source:
+      anchors.top: 21.top
+      anchors.left: 21.left
+      margin-top: 1
+      margin-left: -53
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/20_hover
+
+    WheelSlot
+      id: 27
+      size: 77 71
+      image-source:
+      anchors.top: 21.top
+      anchors.left: 21.left
+      margin-top: 37
+      margin-left: -22
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/27_hover
+
+    WheelSlot
+      id: 19
+      size: 69 81
+      image-source:
+      anchors.top: 20.top
+      anchors.left: 20.left
+      margin-left: -52
+      margin-top: -2
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/19_hover
+
+    WheelSlot
+      id: 26
+      size: 86 86
+      image-source:
+      anchors.top: 19.top
+      anchors.left: 19.left
+      margin-top: 54
+      margin-left: 21
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/26_hover
+
+      WheelSlotHover
+        image-source: /mods/game_wheel/images/area/26_test
+
+      WheelSlotFull
+        image-source: /mods/game_wheel/images/area/26/0
+
+      WheelSlotUnlocked
+        image-source: /mods/game_wheel/images/area/26_full
+
+      WheelSlotMediumPerk
+        margin-left: 4
+        margin-top: -4
+        image-clip: 0 0 30 30
+
+        WheelSlotSmallPerk
+          image-clip: 0 0 16 16
+
+    WheelSlot
+      id: 33
+      size: 82 69
+      image-source:
+      anchors.top: 27.top
+      anchors.left: 27.left
+      margin-top: 54
+      margin-left: -4
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/33_hover
+
+      WheelSlotHover
+        image-source: /mods/game_wheel/images/area/33_test
+
+      WheelSlotFull
+        image-source: /mods/game_wheel/images/area/33/0
+
+      WheelSlotUnlocked
+        image-source: /mods/game_wheel/images/area/33_full
+
+      WheelSlotMediumPerk
+        margin-left: 5
+        image-clip: 0 0 30 30
+
+        WheelSlotSmallPerk
+          image-clip: 0 0 16 16
+
+    WheelSlot
+      id: 25
+      size: 101 150
+      image-source:
+      anchors.top: 19.top
+      anchors.left: 19.left
+      margin-left: -46
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/25_hover
+
+      WheelSlotHover
+        image-source: /mods/game_wheel/images/area/25_test
+
+      WheelSlotFull
+        image-source: /mods/game_wheel/images/area/25/0
+
+      WheelSlotUnlocked
+        image-source: /mods/game_wheel/images/area/25_full
+
+      WheelSlotMediumPerk
+        margin-top: 20
+        margin-left: -5
+        image-clip: 0 0 30 30
+
+        WheelSlotSmallPerk
+          image-clip: 0 0 16 16
+
+    WheelSlot
+      id: 32
+      size: 150 101
+      image-source:
+      anchors.top: 26.top
+      anchors.left: 26.left
+      margin-top: 58
+      margin-left: -11
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/32_hover
+
+      WheelSlotHover
+        image-source: /mods/game_wheel/images/area/32_test
+
+      WheelSlotFull
+        image-source: /mods/game_wheel/images/area/32/0
+
+      WheelSlotUnlocked
+        image-source: /mods/game_wheel/images/area/32_full
+
+      WheelSlotMediumPerk
+        margin-left: -18
+        image-clip: 0 0 30 30
+
+        WheelSlotSmallPerk
+          image-clip: 0 0 16 16
+
+    WheelSlot
+      id: 31
+      size: 263 263
+      image-source:
+      anchors.top: 1.bottom
+      anchors.left: 1.left
+
+      WheelSlotSelected
+        image-source: /mods/game_wheel/images/area/31_hover
+
+      WheelSlotHover
+        image-source: /mods/game_wheel/images/area/31_test
+
+      WheelSlotFull
+        image-source: /mods/game_wheel/images/area/31/0
+
+      WheelSlotUnlocked
+        image-source: /mods/game_wheel/images/area/31_full
+
+      WheelSlotMediumPerk
+        margin-top: 35
+        margin-left: -35
+        image-clip: 0 0 30 30
+
+        WheelSlotSmallPerk
+          image-clip: 0 0 16 16
