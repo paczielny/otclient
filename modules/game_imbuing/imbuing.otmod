@@ -1,9 +1,13 @@
 Module
   name: game_imbuing
-  description: imbuing
-  author: Vincent#1766 on discord
-  website: http://otclient.ovh
+  description: Manage imbuements
+  author: otclient team
+  website: https://github.com/edubart/otclient
   sandboxed: true
-  scripts: [ imbuing ]
+  scripts: 
+    - classes/imbuementselection
+    - classes/imbuementitem
+    - classes/imbuementscroll
+    - imbuing
   @onLoad: init()
   @onUnload: terminate()

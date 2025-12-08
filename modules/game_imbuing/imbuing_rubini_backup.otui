@@ -1,3 +1,4 @@
+
 PickItemButton < UIButton
   id: itemButton
   size: 96 64
@@ -5,7 +6,7 @@ PickItemButton < UIButton
   anchors.left: parent.left
   image-source: /images/game/imbuing/pick-item-button
   image-clip: 0 0 96 64
-  @onClick: modules.game_imbuing.Imbuement.onSelectItem()
+  @onClick: Imbuement.onSelectItem()
   $hover !pressed:
     image-clip: 0 0 96 64
   $pressed:
@@ -19,7 +20,7 @@ ScrollItemButton < UIButton
   margin-left: 6
   image-source: /images/game/imbuing/imbue-scroll-button
   image-clip: 0 0 96 64
-  @onClick: modules.game_imbuing.Imbuement.onSelectScroll()
+  @onClick: Imbuement.onSelectScroll()
   $hover !pressed:
     image-clip: 0 0 96 64
   $pressed:
@@ -59,7 +60,7 @@ RequiredItem < UIWidget
     phantom: true
     image-source: /images/ui/item66
     draggable: false
-  Label
+  FlatLabel
     id: count
     margin-top: 3
     text-align: center
@@ -67,8 +68,8 @@ RequiredItem < UIWidget
     anchors.right: prev.right
     anchors.top: prev.bottom
     image-source: /images/ui/infoPanel
-    font: verdana-11px-rounded
-    color: #C0C0C0
+    font: $var-cip-font
+    color: $var-text-cip-color
     text-offset: -2 1
 
 SelectItemOrScroll < UIWidget
@@ -79,7 +80,7 @@ SelectItemOrScroll < UIWidget
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 5
     Label
       id: title
@@ -87,8 +88,8 @@ SelectItemOrScroll < UIWidget
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Pick Item or Imbue a Blank Scroll')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: itemOrScrollContent
@@ -114,92 +115,90 @@ SelectImbue < UIWidget
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 5
     Label
       id: title
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
-      margin-top: 5
+      margin-top: 2
       !text: tr('Pick Item or Imbue a Blank Scroll')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: itemOrScrollContent
       anchors.fill: parent
-      margin: 23 12 10 12
+      margin: 27 12 10 12
       PickItemButton
-        anchors.left: parent.left
-        anchors.top: parent.top
       ScrollItemButton
-        anchors.left: prev.right
-        anchors.top: parent.top
-        margin-left: 10
-
-      Label
-        id: titleInformation
-        anchors.top: parent.top
-        anchors.left: prev.right
-        !text: tr('Item Information')
-        font: verdana-11px-rounded
-        color: #C0C0C0
-        text-auto-resize: true
-        margin-top: 20
-        margin-left: 25
-
-      UIItem
-        id: item
-        size: 64 64
-        anchors.top: parent.top
-        anchors.left: prev.right
-        priceable: false
-        virtual: true
-        margin-left: 10
-        phantom: true
-        draggable: false
+        
 
       Panel
         id: slots
         size: 208 66
-        anchors.top: parent.top
+        anchors.top: prev.top
         anchors.right: parent.right
+        margin-top: -1
+        margin-right: 18
         SlotImbuing
           id: slot0
           margin-right: 6
           &slot: 0
           anchors.right: next.left
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
         SlotImbuing
           id: slot1
           margin-right: 6
           anchors.right: next.left
           &slot: 1
           phantom: false
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
         SlotImbuing
           id: slot2
           &slot: 2
           anchors.right: parent.right
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
+
+      UIItem
+        id: item
+        size: 64 64
+        anchors.top: prev.top
+        anchors.right: prev.left
+        priceable: false
+        virtual: true
+        margin-top: 1
+        margin-right: 22
+        phantom: true
+        draggable: false
+      Label
+        id: titleInformation
+        anchors.top: prev.top
+        anchors.right: prev.left
+        !text: tr('Item Information')
+        font: $var-cip-font
+        color: $var-text-cip-color
+        text-auto-resize: true
+        margin-top: 24
+        margin-right: 22
 
   Panel
     id: qualityAndImbuementPanel
-    height: 190
+    height: 177
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
-    margin-top: 8
+    margin-top: 11
     Label
       id: title
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Select Quality and Imbuement')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: qualityAndImbuementContent
@@ -220,7 +219,7 @@ SelectImbue < UIWidget
           image-clip: 0 37 144 37
         $on:
           image-clip: 0 37 144 37
-        @onClick: modules.game_imbuing.ImbuementItem.selectBaseType(self:getId())
+        @onClick: ImbuementItem.selectBaseType(self:getId())
         
       UIButton
         id: intricateButton
@@ -237,7 +236,7 @@ SelectImbue < UIWidget
           image-clip: 0 37 144 37
         $on:
           image-clip: 0 37 144 37
-        @onClick: modules.game_imbuing.ImbuementItem.selectBaseType(self:getId())
+        @onClick: ImbuementItem.selectBaseType(self:getId())
         
       UIButton
         id: powerfullButton
@@ -254,7 +253,7 @@ SelectImbue < UIWidget
           image-clip: 0 37 144 37
         $on:
           image-clip: 0 37 144 37
-        @onClick: modules.game_imbuing.ImbuementItem.selectBaseType(self:getId())
+        @onClick: ImbuementItem.selectBaseType(self:getId())
 
       ScrollablePanel
         id: imbuementsList
@@ -273,29 +272,14 @@ SelectImbue < UIWidget
           num-columns: 9
           num-rows: 3
 
-      Panel
-        id: descriptionPanel
-        height: 32
-        anchors.top: prev.bottom
+      Label
+        id: imbuementsDetails
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.right: parent.right
-        margin-top: 8
-        margin-left: 5
-        margin-right: 5
-        background-color: #0f0f0f
-        border-width: 1
-        border-color: #2a2a2a
-        Label
-          id: imbuementsDetails
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.left: parent.left
-          anchors.right: parent.right
-          margin-left: 8
-          margin-right: 8
-          !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
-          font: verdana-11px-rounded
-          color: #C0C0C0
-          text-auto-resize: true
+        !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
+        font: $var-cip-font
+        color: $var-text-cip-color
+        text-auto-resize: true
 
   Panel
     id: imbuementReqPanel
@@ -303,17 +287,17 @@ SelectImbue < UIWidget
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
-    margin-top: 8
+    margin-top: 11
     Label
       id: title
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Imbue Empty Slot with "Imbuement Name"')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: imbuementReqContent
@@ -354,8 +338,8 @@ SelectImbue < UIWidget
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         !text: tr('')
-        font: verdana-11px-rounded
-        color: #C0C0C0
+        font: $var-cip-font
+        color: $var-text-cip-color
         text-auto-resize: true
         visible: true
 
@@ -369,7 +353,7 @@ SelectImbue < UIWidget
         $pressed:
           image-clip: 0 66 128 66
 
-      Panel
+      FlatLabel
         id: costPanel
         margin-top: 3
         anchors.left: prev.left
@@ -384,8 +368,8 @@ SelectImbue < UIWidget
           margin-top: 3
           text: 200
           text-align: center
-          font: verdana-11px-rounded
-          color: #C0C0C0
+          font: $var-cip-font
+          color: $var-text-cip-color
           text-auto-resize: true
         UIWidget
           size: 9 9
@@ -411,7 +395,7 @@ ClearImbue < UIWidget
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 5
     Label
       id: title
@@ -419,8 +403,8 @@ ClearImbue < UIWidget
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Pick Item or Imbue a Blank Scroll')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: itemOrScrollContent
@@ -441,19 +425,19 @@ ClearImbue < UIWidget
           margin-right: 6
           &slot: 0
           anchors.right: next.left
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
         SlotImbuing
           id: slot1
           margin-right: 6
           anchors.right: next.left
           &slot: 1
           phantom: false
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
         SlotImbuing
           id: slot2
           &slot: 2
           anchors.right: parent.right
-          @onClick: modules.game_imbuing.ImbuementItem.onSelectSlot(self)
+          @onClick: ImbuementItem.onSelectSlot(self)
 
       UIItem
         id: item
@@ -471,29 +455,29 @@ ClearImbue < UIWidget
         anchors.top: prev.top
         anchors.right: prev.left
         !text: tr('Item Information')
-        font: verdana-11px-rounded
-        color: #C0C0C0
+        font: $var-cip-font
+        color: $var-text-cip-color
         text-auto-resize: true
         margin-top: 24
         margin-right: 22
 
   Panel
     id: selectedImbuementPanel
-    height: 190
+    height: 152
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
-    margin-top: 8
+    margin-top: 11
     Label
       id: title
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Selected Imbuement')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: selectedImbuementContent
@@ -514,41 +498,32 @@ ClearImbue < UIWidget
           num-columns: 9
           num-rows: 3
 
-      Panel
-        id: descriptionPanel
-        height: 30
-        anchors.top: prev.bottom
+      Label
+        id: imbuementsDetails
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.right: parent.right
-        margin-top: 5
-        background-color: #1e1e1e
-        Label
-          id: imbuementsDetails
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.left: parent.left
-          margin-left: 5
-          !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
-          font: verdana-11px-rounded
-          color: #C0C0C0
-          text-auto-resize: true
+        !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
+        font: $var-cip-font
+        color: $var-text-cip-color
+        text-auto-resize: true
 
   Panel
     id: cleanImbuePanel
-    height: 190
+    height: 141
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
-    margin-top: 8
+    margin-top: 11
     Label
       id: title
       anchors.top: parent.top
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Clear Imbuement "Imbuement Name"')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: imbuementReqContent
@@ -563,20 +538,21 @@ ClearImbue < UIWidget
         margin-top: 34
         margin-left: 91
         phantom: false
-        ProgressBar
+        ProgressBarSD
           id: timeRemaining
           size: 277 18
           anchors.fill: parent
-          background-color: #008000
+          image-source: /images/game/imbuing/imbui-progress
           margin: 1 1 1 1
           phantom: true
+          percent: 1
         Label
           id: textLabel
           anchors.top: parent.top
           anchors.horizontalCenter: parent.horizontalCenter
           text-align: center
-          font: verdana-11px-rounded
-          color: #C0C0C0
+          font: $var-cip-font
+          color: $var-text-cip-color
           text-auto-resize: true
           margin-top: 2
           phantom: true
@@ -585,8 +561,8 @@ ClearImbue < UIWidget
         id: cleanImbuementsDetails
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        font: verdana-11px-rounded
-        color: #C0C0C0
+        font: $var-cip-font
+        color: $var-text-cip-color
         text-auto-resize: true
 
       UIButton
@@ -598,7 +574,7 @@ ClearImbue < UIWidget
         image-clip: 0 0 128 66
         $pressed:
           image-clip: 0 66 128 66
-      Panel
+      FlatLabel
         id: costPanel
         margin-top: 3
         anchors.left: prev.left
@@ -613,8 +589,8 @@ ClearImbue < UIWidget
           margin-top: 3
           text: 200
           text-align: center
-          font: verdana-11px-rounded
-          color: #C0C0C0
+          font: $var-cip-font
+          color: $var-text-cip-color
           text-auto-resize: true
         UIWidget
           size: 9 9
@@ -632,7 +608,7 @@ ScrollImbue < UIWidget
     anchors.top: parent.top
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 5
     Label
       id: title
@@ -640,8 +616,8 @@ ScrollImbue < UIWidget
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Pick Item or Imbue a Blank Scroll')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: itemOrScrollContent
@@ -649,6 +625,7 @@ ScrollImbue < UIWidget
       margin: 22 12 10 12
       PickItemButton
       ScrollItemButton
+        
 
       UIItem
         id: itemScroll
@@ -667,8 +644,8 @@ ScrollImbue < UIWidget
         anchors.top: prev.top
         anchors.right: prev.left
         !text: tr('Blank Imbuement Scroll')
-        font: verdana-11px-rounded
-        color: #C0C0C0
+        font: $var-cip-font
+        color: $var-text-cip-color
         text-auto-resize: true
         margin-top: 24
         margin-right: 22
@@ -679,7 +656,7 @@ ScrollImbue < UIWidget
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
     margin-top: 11
     Label
@@ -688,8 +665,8 @@ ScrollImbue < UIWidget
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Select an Imbuement')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: qualityAndImbuementContent
@@ -710,7 +687,7 @@ ScrollImbue < UIWidget
           image-clip: 0 37 144 37
         $on:
           image-clip: 0 37 144 37
-        @onClick: modules.game_imbuing.ImbuementScroll.selectBaseType(self:getId())
+        @onClick: ImbuementScroll.selectBaseType(self:getId())
       
       UIButton
         id: powerfullButton
@@ -727,7 +704,7 @@ ScrollImbue < UIWidget
           image-clip: 0 37 144 37
         $on:
           image-clip: 0 37 144 37
-        @onClick: modules.game_imbuing.ImbuementScroll.selectBaseType(self:getId())
+        @onClick: ImbuementScroll.selectBaseType(self:getId())
 
       ScrollablePanel
         id: imbuementsList
@@ -743,30 +720,16 @@ ScrollImbue < UIWidget
           cell-size: 66 66
           num-columns: 9
           num-rows: 3
-      Panel
-        id: descriptionPanel
-        height: 32
-        anchors.top: prev.bottom
+      Label
+        id: imbuementsDetails
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
         anchors.right: parent.right
-        margin-top: 8
-        margin-left: 5
-        margin-right: 5
-        background-color: #0f0f0f
-        border-width: 1
-        border-color: #2a2a2a
-        Label
-          id: imbuementsDetails
-          anchors.verticalCenter: parent.verticalCenter
-          anchors.left: parent.left
-          anchors.right: parent.right
-          margin-left: 8
-          margin-right: 8
-          !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
-          font: verdana-11px-rounded
-          color: #C0C0C0
-          text-auto-resize: true
-          text-wrap: true
+        !text: tr('Raises your walking speed by 30. Lasts for 20h 0min while equipped.')
+        font: $var-cip-font
+        color: $var-text-cip-color
+        text-auto-resize: true
+        text-wrap: true
 
   Panel
     id: imbuementReqPanel
@@ -774,7 +737,7 @@ ScrollImbue < UIWidget
     anchors.top: prev.bottom
     anchors.left: parent.left
     anchors.right: parent.right
-    image-source: /images/ui/panel_flat
+    image-source: /images/ui/t2pixel-up-frame-borderimage
     image-border: 17
     margin-top: 11
     Label
@@ -783,8 +746,8 @@ ScrollImbue < UIWidget
       anchors.horizontalCenter: parent.horizontalCenter
       margin-top: 2
       !text: tr('Imbue Blank Scroll with "Imbuement Name"')
-      font: verdana-11px-rounded
-      color: #909090
+      font: $var-cip-font
+      color: $var-text-cip-color-grey
       text-auto-resize: true
     Panel
       id: imbuementReqContent
@@ -830,8 +793,8 @@ ScrollImbue < UIWidget
         anchors.bottom: parent.bottom
         anchors.left: parent.left
         !text: tr('')
-        font: verdana-11px-rounded
-        color: #C0C0C0
+        font: $var-cip-font
+        color: $var-text-cip-color
         text-auto-resize: true
         visible: true
 
@@ -845,7 +808,7 @@ ScrollImbue < UIWidget
         $pressed:
           image-clip: 0 66 128 66
 
-      Panel
+      FlatLabel
         id: costPanel
         margin-top: 3
         anchors.left: prev.left
@@ -860,8 +823,8 @@ ScrollImbue < UIWidget
           margin-top: 3
           text: 200
           text-align: center
-          font: verdana-11px-rounded
-          color: #C0C0C0
+          font: $var-cip-font
+          color: $var-text-cip-color
           text-auto-resize: true
         UIWidget
           size: 9 9
@@ -871,11 +834,11 @@ ScrollImbue < UIWidget
           margin-left: 2
           image-source: /images/game/cyclopedia/icons/icon-goldcoin
 
-MainWindow
+NewMainWindow
   id: imbuingWindow
   !text: tr('Imbuement Shrine')
   size: 740 640
-  @onEscape: modules.game_imbuing.Imbuement.close()
+  @onEscape: Imbuement.close()
   Panel
     id: contentPanel
     anchors.fill: parent
@@ -883,18 +846,22 @@ MainWindow
 
     SelectItemOrScroll
       id: selectItemOrScroll
+      main-window-size: 740 388
       visible: true
 
     ScrollImbue
       id: scrollImbue
+      main-window-size: 740 655
       visible: false
 
     SelectImbue
       id: selectImbue
+      main-window-size: 740 528
       visible: false
     
     ClearImbue
       id: clearImbue
+      main-window-size: 740 502
       visible: false
 
     HorizontalSeparator
@@ -909,28 +876,28 @@ MainWindow
       size: 43 20
       anchors.right: parent.right
       anchors.bottom: parent.bottom
-      @onClick: modules.game_imbuing.Imbuement.close()
+      @onClick: Imbuement.close()
     Panel
       id: gold
       size: 104 20
       anchors.left: parent.left
       anchors.bottom: parent.bottom
-      background-color: #1e1e1e
-      Label
-        id: goldAmount
-        anchors.top: parent.top
-        anchors.right: parent.right
-        margin-top: 3
-        margin-right: 20
-        text: 0
-        font: verdana-11px-rounded
-        color: #C0C0C0
-        text-auto-resize: true
+      image-source: /images/game/prey/balanceBg
       UIWidget
-        id: goldIcon
-        size: 9 9
+        id: gold
         anchors.top: parent.top
         anchors.right: parent.right
         margin-top: 6
         margin-right: 3
-        image-source: /images/game/cyclopedia/icons/icon-goldcoin
+        image-source: /images/game/prey/prey_gold
+        tooltip: Gold Coins
+      UIWidget
+        id: text
+        anchors.top: parent.top
+        anchors.right: prev.left
+        margin-top: 3
+        margin-right: 2
+        text: 0
+        font: $var-cip-font
+        color: $var-text-cip-color
+        text-auto-resize: true
