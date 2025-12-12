@@ -1811,28 +1811,43 @@ void Game::preyRequest()
     m_protocolGame->sendPreyRequest();
 }
 
-void Game::applyImbuement(const uint8_t slot, const uint32_t imbuementId, const bool protectionCharm)
+void Game::applyImbuement(uint16_t slot, uint32_t imbuementId, bool protection)
 {
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendApplyImbuement(slot, imbuementId, protectionCharm);
+    if (!canPerformGameAction()) return;
+    if (m_protocolGame) {
+        m_protocolGame->sendApplyImbuement(slot, imbuementId, protection);
+    }
 }
 
-void Game::clearImbuement(const uint8_t slot)
+void Game::clearImbuement(uint16_t slot)
 {
-    if (!canPerformGameAction())
-        return;
-
-    m_protocolGame->sendClearImbuement(slot);
+    if (!canPerformGameAction()) return;
+    if (m_protocolGame) {
+        m_protocolGame->sendClearImbuement(slot);
+    }
 }
 
 void Game::closeImbuingWindow()
 {
-    if (!canPerformGameAction())
-        return;
+    if (!canPerformGameAction()) return;
+    if (m_protocolGame) {
+        m_protocolGame->sendCloseImbuingWindow();
+    }
+}
 
-    m_protocolGame->sendCloseImbuingWindow();
+void Game::selectImbuementItem(uint16_t itemId, Position pos, uint8_t stackPos)
+{
+    // Usamos isOnline para evitar problemas
+    if (isOnline() && m_protocolGame) {
+        m_protocolGame->sendSelectImbuementItem(itemId, pos, stackPos);
+    }
+}
+
+void Game::selectImbuementScroll()
+{
+    if (isOnline() && m_protocolGame) {
+        m_protocolGame->sendSelectImbuementScroll();
+    }
 }
 
 void Game::imbuementDurations(const bool isOpen)

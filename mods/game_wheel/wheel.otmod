@@ -1,9 +1,0 @@
-Module
-  name: game_wheel
-  description: Wheel of destiny
-  author: luanluciano93
-  website: 
-  sandboxed: true
-  scripts: [ wheel, categories/wheel_of_destiny, categories/gem_atelier, categories/fragment_workshop ]
-  @onLoad: WheelDestiny.Init()
-  @onUnload: WheelDestiny.Terminate()

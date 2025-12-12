@@ -6,6 +6,8 @@ end
 
 ImbuementSelection.__index = ImbuementSelection
 
+local m_interface = modules.game_interface
+
 local self = ImbuementSelection
 function ImbuementSelection.startUp()
   self.pickItem = g_ui.createWidget('UIWidget')
@@ -26,25 +28,8 @@ function ImbuementSelection:selectItem()
     self:startUp()
   end
 
-  if g_mouse.isPressed() then 
-    return 
-  end
+  if g_ui.isMouseGrabbed() then return end
   
-  self.isSelectingScroll = false
-  self.pickItem:grabMouse()
-  g_mouse.pushCursor('target')
-end
-
-function ImbuementSelection:selectScroll()
-  if not self.pickItem then
-    self:startUp()
-  end
-
-  if g_mouse.isPressed() then 
-    return 
-  end
-  
-  self.isSelectingScroll = true
   self.pickItem:grabMouse()
   g_mouse.pushCursor('target')
 end
@@ -52,7 +37,7 @@ end
 function ImbuementSelection.onChooseItemMouseRelease(widget, mousePosition, mouseButton)
   local item = nil
   if mouseButton == MouseLeftButton then
-    local clickedWidget = modules.game_interface.getRootPanel():recursiveGetChildByPos(mousePosition, false)
+    local clickedWidget = m_interface.getRootPanel():recursiveGetChildByPos(mousePosition, false)
     if clickedWidget then
       if clickedWidget:getClassName() == 'UIGameMap' then
         local tile = clickedWidget:getTile(mousePosition)
@@ -69,22 +54,12 @@ function ImbuementSelection.onChooseItemMouseRelease(widget, mousePosition, mous
   end
 
   if item and item:isPickupable() then
-    local pos = item:getPosition()
-    local itemId = item:getId()
-    local stackPos = item:getStackPos()
-    
-    if self.isSelectingScroll then
-      g_game.selectImbuementItem(pos, itemId, stackPos)
-    else
-      g_game.selectImbuementItem(pos, itemId, stackPos)
-    end
-    
-    self.pickItem:ungrabMouse()
-    g_mouse.popCursor('target')
-    
-    return true
+    -- Enviamos la petición. La ventana SOLO se abrirá si el servidor responde y t_imbui.lua lo valida.
+    g_game.selectImbuementItem(item:getId(), item:getPosition(), item:getStackPos())
   else
     modules.game_textmessage.displayFailureMessage(tr('Sorry, not possible.'))
+    -- Si el clic fue inválido (suelo vacío), restauramos la ventana para no trabar al jugador
+    Imbuement:show()
   end
 
   self.pickItem:ungrabMouse()

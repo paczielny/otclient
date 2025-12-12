@@ -1413,6 +1413,27 @@ void ProtocolGame::sendClearImbuement(const uint8_t slot)
     send(msg);
 }
 
+void ProtocolGame::sendSelectImbuementItem(uint16_t itemId, const Position& pos, uint8_t stackPos)
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientImbuementWindow); // Esto ahora vale 178 (0xB2)
+    msg->addU8(Otc::IMBUEMENT_WINDOW_SELECT_ITEM);
+    msg->addU16(pos.x);
+    msg->addU16(pos.y);
+    msg->addU8(pos.z);
+    msg->addU16(itemId);
+    msg->addU8(stackPos);
+    send(msg);
+}
+
+void ProtocolGame::sendSelectImbuementScroll()
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientImbuementWindow); // Esto ahora vale 178 (0xB2)
+    msg->addU8(Otc::IMBUEMENT_WINDOW_SCROLL);
+    send(msg);
+}
+
 void ProtocolGame::sendCloseImbuingWindow()
 {
     const auto& msg = std::make_shared<OutputMessage>();

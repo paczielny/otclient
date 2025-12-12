@@ -48,6 +48,9 @@ void ProtocolGame::parseMessage(const InputMessagePtr& msg)
         while (!msg->eof()) {
             opcode = msg->getU8();
 
+            if (opcode == 0xEB) {  
+                std::cout << "DEBUG: Opcode 0xEB recibido (antes de Lua handler)" << std::endl;  
+            }             
             // must be > so extended will be enabled before GameStart.
             if (!g_game.getFeature(Otc::GameLoginPending)) {
                 if (!m_gameInitialized && opcode > Proto::GameServerFirstGameOpcode) {

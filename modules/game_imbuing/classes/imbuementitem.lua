@@ -16,6 +16,7 @@ end
 ImbuementItem.__index = ImbuementItem
 
 local self = ImbuementItem
+
 function ImbuementItem.setup(itemId, tier, slots, activeSlots, availableImbuements, needItems)
     self.itemId = itemId
     self.tier = tier
@@ -36,9 +37,8 @@ function ImbuementItem.setup(itemId, tier, slots, activeSlots, availableImbuemen
     self.selectedSlot = 0
     self.onSelectImbuementSlot(self.selectedSlot)
 
-    -- Verificar se o slot 0 tem um imbuement ativo e passar para updateWindowState
-    local imbuement = self.activeSlots["slot0"]
-    self.updateWindowState(imbuement)
+    -- [CAMBIO] Pasamos explícitamente el slot 0 aquí para inicializar
+    self.updateWindowState(self.activeSlots["slot0"])
 
     self.configureWindow(Imbuement.selectImbue)
     self.configureWindow(Imbuement.clearImbue)
@@ -46,30 +46,46 @@ end
 
 function ImbuementItem.configureWindow(window)
     local slots = window:recursiveGetChildById("slots")
+    
     for i = 1, 3 do
-        local slotWidget = slots:getChildById("slot"..i - 1)
+        local slotIndex = i - 1 -- Esto nos da 0, 1, 2
+        local slotWidget = slots:getChildById("slot"..slotIndex)
+        
         if slotWidget then
-            slotWidget.resource:setImageSource("/images/game/imbuing/icons/0")
+            -- [FIX IMPORTANTE] Guardamos el índice y asignamos el evento Click
+            slotWidget.slotId = slotIndex 
+            slotWidget.onClick = function() ImbuementItem.onSelectSlot(slotWidget) end
+
+            -- Configuración visual
+            slotWidget.resource:setImageSource("/images/game/imbuing/imbuement-icons-64")
+            slotWidget.resource:setImageClip(torect("0 0 64 64"))
+            
             if i <= self.slots then
                 slotWidget:setVisible(true)
-                local imbuement = self.activeSlots["slot"..i - 1]
-                if imbuement and imbuement[1] then
-                    if imbuement[1].id and imbuement[1].id ~= 0 then
-                        slotWidget.resource:setImageSource("/images/game/imbuing/icons/" .. imbuement[1]["imageId"])
-                    end
+                local imbuement = self.activeSlots["slot"..slotIndex]
+                if imbuement and imbuement[1] and imbuement[1].id ~= 0 then
+                    -- Ajuste de imagen (usando tu lógica de +21 si es lo que prefieres)
+                    local shiftedId = imbuement[1]["imageId"] + 21
+                    slotWidget.resource:setImageClip(getFramePosition(shiftedId, 64, 64, 21) .. " 64 64")
                 end
             else
                 slotWidget:setVisible(false)
             end
         end
     end
-    
+
     local itemName = getItemNameById(self.itemId)
+    
     local itemWidget = window:recursiveGetChildById("item")
     if itemWidget then
         itemWidget:setItemId(self.itemId)
         itemWidget:setImageSmooth(true)
         itemWidget:setItemCount(1)
+        
+        local widgetItem = itemWidget:getItem()
+        if widgetItem and widgetItem.getName then
+             itemName = widgetItem:getName()
+        end
     end
 
     local itemInformation = window:recursiveGetChildById("titleInformation")
@@ -79,18 +95,30 @@ function ImbuementItem.configureWindow(window)
 end
 
 function ImbuementItem.onSelectSlot(widget)
-    local slot = widget:getId()
-    ImbuementItem.onSelectImbuementSlot(widget.slot)
-    local imbuement = self.activeSlots[slot]
+    -- Usamos la propiedad .slotId que guardamos en configureWindow (es un número: 0, 1 o 2)
+    local slot = widget.slotId 
+    
+    -- Seleccionamos visualmente el slot
+    ImbuementItem.onSelectImbuementSlot(slot)
+    
+    -- Obtenemos la info del imbuement para ese slot específico
+    local imbuement = self.activeSlots["slot"..slot]
+    
+    -- Actualizamos la ventana (si está vacío muestra botones de imbuir, si está lleno muestra botón de limpiar)
     self.updateWindowState(imbuement)
 end
 
 function ImbuementItem.updateWindowState(imbuement)
-    if imbuement and imbuement[1] and imbuement[1].id ~= 0 then
+    -- [CORREGIDO] Quitamos la línea que forzaba 'slot0'. 
+    -- Si 'imbuement' es nil (vacío), queremos que entre al 'else' para poder imbuir.
+
+    if imbuement and imbuement[1] and imbuement[1].id and imbuement[1].id ~= 0 then
+        -- Si el slot tiene algo, mostramos el menú de LIMPIAR
         Imbuement:toggleMenu("clearImbue")
         self.window = Imbuement.clearImbue
         self.onSelectSlotClear(imbuement)
     else
+        -- Si el slot está vacío, mostramos el menú de IMBUIR
         Imbuement:toggleMenu("selectImbue")
         self.window = Imbuement.selectImbue
         self.onSelectSlotImbue()
@@ -165,19 +193,22 @@ function ImbuementItem.onSelectSlotClear(imbuement)
     clearImbuementsList:destroyChildren()
 
     local widget = g_ui.createWidget("SlotImbuing", clearImbuementsList)
-    widget.resource:setImageSource("/images/game/imbuing/icons/" .. imbuement[1]["imageId"])
+    widget.resource:setImageSource("/images/game/imbuing/imbuement-icons-64")
+    
+    -- [FIX] Sumamos 21 al ID del icono y usamos 21 columnas
+    local shiftedId = imbuement[1]["imageId"] + 21
+    widget.resource:setImageClip(getFramePosition(shiftedId, 64, 64, 21) .. " 64 64")
+    
     widget:setBorderWidth(1)
     widget:setBorderColor("white")
 
     local selectedImbuementContent = self.window:recursiveGetChildById("selectedImbuementContent")
     if selectedImbuementContent then
-        local imbuementsDetails = selectedImbuementContent:recursiveGetChildById("imbuementsDetails")
-        if imbuementsDetails then
-            imbuementsDetails:setText(imbuement[1].description or "")
-        end
+        selectedImbuementContent.imbuementsDetails:setText(imbuement[1].description or "")
     end
 
     local balance = getPlayerBalance()
+    
     local clearButton = self.window:recursiveGetChildById("clear")
     if clearButton then
         clearButton:setEnabled(balance >= imbuement[3])
@@ -231,22 +262,19 @@ function ImbuementItem.onSelectSlotClear(imbuement)
     local costPanel = self.window:recursiveGetChildById("costPanel")
     if costPanel then
         costPanel.cost:setText(comma_value(imbuement[3]))
-        costPanel.cost:setColor(balance < imbuement[3] and "#C04040" or "#C0C0C0")
+        costPanel.cost:setColor(balance < imbuement[3] and "#ff5555" or "#c0c0c0")
     end
 end
 
 function ImbuementItem.onSelectSlotImbue()
     self.selectBaseType('basicButton')
-
     self.window:recursiveGetChildById('imbuementsDetails'):setVisible(false)
 end
 
 function ImbuementItem.selectBaseType(selectedButtonId)
     self.window:recursiveGetChildById('blockedPanels'):setVisible(true)
     local qualityAndImbuementContent = self.window:recursiveGetChildById("qualityAndImbuementContent")
-    if not qualityAndImbuementContent then
-        return
-    end
+    if not qualityAndImbuementContent then return end
 
     local basicButton = qualityAndImbuementContent.basicButton
     local intricateButton = qualityAndImbuementContent.intricateButton
@@ -261,36 +289,57 @@ function ImbuementItem.selectBaseType(selectedButtonId)
     end
 
     local imbuementsList = self.window:recursiveGetChildById("imbuementsList")
-    imbuementsList:setWidth(70)
     imbuementsList:destroyChildren()
 
     local imbuementsDetails = self.window:recursiveGetChildById("imbuementsDetails")
     imbuementsDetails:setVisible(false)
 
-    local maxWidth = 0
+    local groupToType = {
+        ["Basic"] = 0, ["basic"] = 0, [1] = 0, ["1"] = 0,
+        ["Intricate"] = 1, ["intricate"] = 1, [2] = 1, ["2"] = 1,
+        ["Powerful"] = 2, ["powerful"] = 2, [3] = 2, ["3"] = 2
+    }
+
+    local visibleIcons = 0
+    local iconFullWidth = 71 -- Ancho 66 + Margen 5
+
     for id, imbuement in pairs(self.availableImbuements) do
-        if imbuement.type == baseImbuement then
+        local currentType = imbuement.type
+        if currentType == nil and imbuement.group then
+            currentType = groupToType[imbuement.group]
+        end
+
+        if currentType == baseImbuement then
             local widget = g_ui.createWidget("SlotImbuing", imbuementsList)
             widget:setId(tostring(id))
-            widget.resource:setImageSource("/images/game/imbuing/icons/" .. imbuement.imageId)
+            widget.resource:setImageSource("/images/game/imbuing/imbuement-icons-64")
+            
+            if imbuement.imageId then
+                -- [FIX] Sumamos 21 al ID del icono y usamos 21 columnas
+                local shiftedId = imbuement.imageId + 21
+                widget.resource:setImageClip(getFramePosition(shiftedId, 64, 64, 21) .. " 64 64")
+            end
 
             widget.onClick = function()
                 ImbuementItem.selectImbuementWidget(widget, imbuement)
             end
-
-            maxWidth = math.min(imbuementsList.maxWidth, maxWidth + imbuementsList.incrementwidth)
+            
+            visibleIcons = visibleIcons + 1
         end
     end
 
-    imbuementsList:setWidth(maxWidth)
+    -- Centrado Automático
+    local newWidth = visibleIcons * iconFullWidth
+    if visibleIcons > 0 then newWidth = newWidth - 5 end
+    if newWidth > 680 then newWidth = 680 end
+    if newWidth < 70 then newWidth = 70 end
+    imbuementsList:setWidth(newWidth)
 end
 
 function ImbuementItem.onSelectImbuement(widget)
     local imbuementId = tonumber(widget:getId())
     local imbuement = self.availableImbuements[imbuementId]
-    if not imbuement then
-        return
-    end
+    if not imbuement then return end
 
     self.window:recursiveGetChildById('blockedPanels'):setVisible(false)
 
@@ -316,7 +365,7 @@ function ImbuementItem.selectImbuementWidget(widget, imbuement)
     widget:setBorderWidth(1)
     widget:setBorderColor("white")
 
-    self.onSelectImbuement(widget)
+    ImbuementItem.onSelectImbuement(widget)
 
     local imbuementsDetails = self.window:recursiveGetChildById("imbuementsDetails")
     if imbuementsDetails then
@@ -334,20 +383,23 @@ function ImbuementItem.selectImbuementWidget(widget, imbuement)
                 if source then
                     itemWidget.item:setItemId(source.item:getId())
                     itemWidget:setVisible(true)
-                    local itemCount = self.needItems[source.item:getId()] or 0
-                    itemWidget.count:setText(itemCount .."/" .. source.item:getCount())
-                    if itemCount >= source.item:getCount() then
-                        itemWidget.count:setColor("#C0C0C0")
+                    
+                    -- [FIX] Seguridad 'or 0' si no tienes items
+                    local playerItemCount = self.needItems[source.item:getId()] or 0
+                    itemWidget.count:setText(playerItemCount .."/" .. source.item:getCount())
+                    
+                    if playerItemCount >= source.item:getCount() then
+                        itemWidget.count:setColor("#c0c0c0")
                     else
                         hasRequiredItems = false
-                        itemWidget.count:setColor("#C04040")
+                        itemWidget.count:setColor("#ff5555")
                     end
 
                     itemWidget.onHoverChange = function(widget, hovered)
                         local itensDetails = self.window:recursiveGetChildById("itensDetails")
                         if hovered then
-                            local itemCount = self.needItems[source.item:getId()] or 0
-                            if itemCount >= source.item:getCount() then
+                            local countNow = self.needItems[source.item:getId()] or 0
+                            if countNow >= source.item:getCount() then
                                 itensDetails:setText(string.format("The imbuement you have selected requires %s.", source.description))
                             else
                                 itensDetails:setText(string.format("The imbuement requires %s. Unfortunately you do not own the needed amount.", source.description))
@@ -369,13 +421,14 @@ function ImbuementItem.selectImbuementWidget(widget, imbuement)
     if costPanel then
         local cost = imbuement.cost or 0
         costPanel.cost:setText(comma_value(cost))
+        
         local balance = getPlayerBalance()
 
         if balance < cost then
             hasRequiredItems = false
         end
 
-        costPanel.cost:setColor(balance < cost and "#C04040" or "#C0C0C0")
+        costPanel.cost:setColor(balance < cost and "#ff5555" or "#c0c0c0")
     end
 
     local imbueApply = self.window:recursiveGetChildById("imbueApply")
@@ -407,11 +460,13 @@ function ImbuementItem.selectImbuementWidget(widget, imbuement)
 
             Imbuement.hide()
 
+            -- Buscar dentro de imbueApply.onClick
             local function confirm()
+                -- [CORREGIDO] Quitar el ", false" del final
                 g_game.applyImbuement(self.selectedSlot, imbuement.id)
+                
                 self.confirmWindow:destroy()
                 self.confirmWindow = nil
-
                 Imbuement.show()
             end
 
@@ -420,7 +475,6 @@ function ImbuementItem.selectImbuementWidget(widget, imbuement)
                     self.confirmWindow:destroy()
                     self.confirmWindow = nil
                 end
-
                 Imbuement.show()
             end
 

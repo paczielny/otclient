@@ -379,10 +379,12 @@ public:
     void preyRequest();
 
     // imbuing related
-    void applyImbuement(uint8_t slot, uint32_t imbuementId, bool protectionCharm);
-    void clearImbuement(uint8_t slot);
+    void applyImbuement(uint16_t slot, uint32_t imbuementId, bool protection);
+    void clearImbuement(uint16_t slot);
     void closeImbuingWindow();
     void imbuementDurations(bool isOpen = false);
+    void selectImbuementItem(uint16_t itemId, Position pos, uint8_t stackPos);
+    void selectImbuementScroll();
 
     void enableTileThingLuaCallback(const bool value) { m_tileThingsLuaCallback = value; }
     bool isTileThingLuaCallbackEnabled() { return m_tileThingsLuaCallback; }
