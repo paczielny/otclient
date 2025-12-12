@@ -1393,6 +1393,17 @@ void ProtocolGame::sendPreyRequest()
     send(msg);
 }
 
+void ProtocolGame::sendTaskHuntingAction(uint8_t slot, uint8_t action, bool upgrade, uint16_t raceId)
+{
+    const auto& msg = std::make_shared<OutputMessage>();
+    msg->addU8(Proto::ClientTaskHuntingAction); // 186
+    msg->addU8(slot);
+    msg->addU8(action);
+    msg->addU8(upgrade ? 1 : 0);
+    msg->addU16(raceId);
+    send(msg);
+}
+
 void ProtocolGame::sendApplyImbuement(const uint8_t slot, const uint32_t imbuementId, const bool protectionCharm)
 {
     const auto& msg = std::make_shared<OutputMessage>();

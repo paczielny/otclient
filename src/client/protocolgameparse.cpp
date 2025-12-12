@@ -4159,73 +4159,113 @@ void ProtocolGame::parseBestiaryTracker(const InputMessagePtr& msg)
 void ProtocolGame::parseTaskHuntingBasicData(const InputMessagePtr& msg)
 {
     const uint16_t preys = msg->getU16();
+    std::vector<std::tuple<int, int>> preysList;
     for (auto i = 0; i < preys; ++i) {
-        msg->getU16(); // RaceID
-        msg->getU8(); // Difficult
+        int raceId = msg->getU16();
+        int difficult = msg->getU8();
+        preysList.emplace_back(raceId, difficult);
     }
 
     const uint8_t options = msg->getU8();
+    
+    std::vector<int> firstKills;
+    std::vector<int> secondKills;
+    // Leemos pero no necesitamos guardar rewards aquí si el lua no los usa, 
+    // pero debemos leerlos para avanzar el buffer del mensaje.
+    
     for (auto i = 0; i < options; ++i) {
-        msg->getU8(); // Difficult
+        msg->getU8(); // Difficult index
         msg->getU8(); // Stars
-        msg->getU16(); // First kill
+        
+        firstKills.push_back(msg->getU16());
         msg->getU16(); // First reward
-        msg->getU16(); // Second kill
+        secondKills.push_back(msg->getU16());
         msg->getU16(); // Second reward
     }
+
+    // Enviar a Lua
+    g_lua.callGlobalField("g_game", "onTaskHuntingBasicData", preysList, options, firstKills, secondKills);
 }
 
 void ProtocolGame::parseTaskHuntingData(const InputMessagePtr& msg)
 {
-    msg->getU8(); // slot
-    const auto state = static_cast<Otc::PreyTaskstate_t>(msg->getU8()); // slot state
+    uint8_t slot = msg->getU8();
+    const auto state = static_cast<Otc::PreyTaskstate_t>(msg->getU8());
+
+    // Variables para enviar a Lua
+    uint16_t creaturesCount = 0;
+    std::vector<int> raceIds;
+    std::vector<int> unlockedStatuses;
+    
+    int raceId = 0;
+    int upgraded = 0;
+    int requiredKills = 0;
+    int currentKills = 0;
+    int stars = 0;
+    int rarity = 0;
+    int unlocked = 0;
 
     switch (state) {
         case Otc::PREY_TASK_STATE_LOCKED:
         {
-            msg->getU8(); // task slot unlocked
+            unlocked = msg->getU8(); 
             break;
         }
         case Otc::PREY_TASK_STATE_INACTIVE:
+            // Solo tiene nextFreeRoll al final, no hay data extra aquí
             break;
-        case Otc::PREY_TASK_STATE_SELECTION:
+            
+        case Otc::PREY_TASK_STATE_SELECTION: // Lista 3x3
+        case Otc::PREY_TASK_STATE_LIST_SELECTION: // Lista completa
         {
-            const uint16_t creatures = msg->getU16();
-            for (auto i = 0; i < creatures; ++i) {
-                msg->getU16(); // RaceID
-                msg->getU8(); // Is unlocked
-            }
-            break;
-        }
-        case Otc::PREY_TASK_STATE_LIST_SELECTION:
-        {
-            const uint16_t creatures = msg->getU16();
-            for (auto i = 0; i < creatures; ++i) {
-                msg->getU16(); // RaceID
-                msg->getU8(); // Is unlocked
+            creaturesCount = msg->getU16();
+            for (auto i = 0; i < creaturesCount; ++i) {
+                raceIds.push_back(msg->getU16());
+                unlockedStatuses.push_back(msg->getU8());
             }
             break;
         }
         case Otc::PREY_TASK_STATE_ACTIVE:
         {
-            msg->getU16(); // RaceID
-            msg->getU8(); // Upgraded
-            msg->getU16(); // Required kills
-            msg->getU16(); // Current kills
-            msg->getU8(); // Stars
+            raceId = msg->getU16();
+            upgraded = msg->getU8();
+            requiredKills = msg->getU16();
+            currentKills = msg->getU16();
+            stars = msg->getU8();
             break;
         }
         case Otc::PREY_TASK_STATE_COMPLETED:
         {
-            msg->getU16(); // RaceID
-            msg->getU8(); // Upgraded
-            msg->getU16(); // Required kills
-            msg->getU16(); // Current kills
+            raceId = msg->getU16();
+            upgraded = msg->getU8();
+            requiredKills = msg->getU16();
+            currentKills = msg->getU16();
+            rarity = msg->getU8();
             break;
         }
+        case Otc::PREY_TASK_STATE_EXHAUSTED:
+            break;
     }
 
-    msg->getU32(); // next free roll
+    uint32_t nextFreeRoll = msg->getU32();
+
+    // === AQUÍ ESTÁ LA MAGIA: ENVIAR A LUA ===
+    if (state == Otc::PREY_TASK_STATE_LOCKED) {
+        g_lua.callGlobalField("g_game", "onTaskHuntingData", slot, state, unlocked, nextFreeRoll);
+    }
+    else if (state == Otc::PREY_TASK_STATE_INACTIVE || state == Otc::PREY_TASK_STATE_EXHAUSTED) {
+        g_lua.callGlobalField("g_game", "onTaskHuntingData", slot, state, nextFreeRoll);
+    }
+    else if (state == Otc::PREY_TASK_STATE_SELECTION || state == Otc::PREY_TASK_STATE_LIST_SELECTION) {
+        // Importante: Pasamos las tablas (vectors) a Lua
+        g_lua.callGlobalField("g_game", "onTaskHuntingData", slot, state, creaturesCount, raceIds, unlockedStatuses, nextFreeRoll);
+    }
+    else if (state == Otc::PREY_TASK_STATE_ACTIVE) {
+        g_lua.callGlobalField("g_game", "onTaskHuntingData", slot, state, raceId, upgraded, requiredKills, currentKills, stars, nextFreeRoll);
+    }
+    else if (state == Otc::PREY_TASK_STATE_COMPLETED) {
+        g_lua.callGlobalField("g_game", "onTaskHuntingData", slot, state, raceId, upgraded, requiredKills, currentKills, rarity, nextFreeRoll);
+    }
 }
 
 void ProtocolGame::parseExperienceTracker(const InputMessagePtr& msg)

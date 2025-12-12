@@ -378,6 +378,13 @@ public:
     void preyAction(uint8_t slot, uint8_t actionType, uint16_t index);
     void preyRequest();
 
+    // Task Hunting Support
+    void taskHuntingRequest();
+    void taskHuntingAction(int slot, int action, bool upgrade, int raceId);
+
+    double getTaskHuntingPoints();
+    void setTaskHuntingPoints(double points);
+
     // imbuing related
     void applyImbuement(uint16_t slot, uint32_t imbuementId, bool protection);
     void clearImbuement(uint16_t slot);
@@ -465,6 +472,8 @@ private:
     bool m_safeFight{ true };
     bool m_canReportBugs{ false };
 
+    double m_taskHuntingPoints;
+    
     uint16_t m_mapUpdatedAt{ 0 };
     std::pair<uint16_t, Timer> m_mapUpdateTimer = { true, Timer{} };
 

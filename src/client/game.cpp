@@ -73,6 +73,7 @@ void Game::resetGameStates()
     m_pingSent = 0;
     m_pingReceived = 0;
     m_unjustifiedPoints = UnjustifiedPoints();
+    m_taskHuntingPoints = 0;
 
     for (const auto& it : m_containers) {
         const auto& container = it.second;
@@ -2066,4 +2067,33 @@ void Game::processCyclopediaCharacterDefenceStats(const CyclopediaCharacterDefen
 void Game::processCyclopediaCharacterMiscStats(const CyclopediaCharacterMiscStats& data)
 {
     g_lua.callGlobalField("g_game", "onCyclopediaCharacterMiscStats", data);
+}
+
+void Game::taskHuntingRequest()
+{
+    if (!canPerformGameAction())
+        return;
+    if (m_protocolGame) {
+        m_protocolGame->sendPreyRequest(); 
+    }
+}
+
+void Game::taskHuntingAction(int slot, int action, bool upgrade, int raceId)
+{
+    if (!canPerformGameAction())
+        return;
+
+    if (m_protocolGame) {
+        m_protocolGame->sendTaskHuntingAction(slot, action, upgrade, raceId);
+    }
+}
+
+double Game::getTaskHuntingPoints()
+{
+    return m_taskHuntingPoints;
+}
+
+void Game::setTaskHuntingPoints(double points)
+{
+    m_taskHuntingPoints = points;
 }

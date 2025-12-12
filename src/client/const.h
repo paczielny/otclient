@@ -381,7 +381,8 @@ namespace Otc
         PREY_TASK_STATE_SELECTION = 2,
         PREY_TASK_STATE_LIST_SELECTION = 3,
         PREY_TASK_STATE_ACTIVE = 4,
-        PREY_TASK_STATE_COMPLETED = 5
+        PREY_TASK_STATE_COMPLETED = 5,
+        PREY_TASK_STATE_EXHAUSTED = 6
     };
 
     enum PreyMessageDialog_t : uint8_t

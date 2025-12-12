@@ -321,6 +321,7 @@ namespace Proto
         ClientBosstiaryRequestSlotAction = 176,
         ClientRequestHighscore = 177,
         ClientImbuementWindow = 178,
+        ClientTaskHuntingAction = 186,
         ClientCancelAttackAndFollow = 190,
         ClientForgeEnter = 191,
         ClientForgeBrowseHistory = 192,

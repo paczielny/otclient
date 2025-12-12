@@ -368,6 +368,10 @@ void Client::registerLuaFunctions()
     g_lua.bindSingletonFunction("g_game", "acceptMarketOffer", &Game::acceptMarketOffer, &g_game);
     g_lua.bindSingletonFunction("g_game", "preyAction", &Game::preyAction, &g_game);
     g_lua.bindSingletonFunction("g_game", "preyRequest", &Game::preyRequest, &g_game);
+    g_lua.bindSingletonFunction("g_game", "taskHuntingRequest", &Game::taskHuntingRequest, &g_game);
+    g_lua.bindSingletonFunction("g_game", "taskHuntingAction", &Game::taskHuntingAction, &g_game);
+    g_lua.bindSingletonFunction("g_game", "getTaskHuntingPoints", &Game::getTaskHuntingPoints, &g_game);
+    g_lua.bindSingletonFunction("g_game", "setTaskHuntingPoints", &Game::setTaskHuntingPoints, &g_game);
     g_lua.bindSingletonFunction("g_game", "applyImbuement", &Game::applyImbuement, &g_game);
     g_lua.bindSingletonFunction("g_game", "clearImbuement", &Game::clearImbuement, &g_game);
     g_lua.bindSingletonFunction("g_game", "closeImbuingWindow", &Game::closeImbuingWindow, &g_game);
